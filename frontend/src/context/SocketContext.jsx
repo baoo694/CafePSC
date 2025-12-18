@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
 const SocketContext = createContext(null);
@@ -10,11 +10,38 @@ const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 // Check if we should use Socket.IO (local dev) or Supabase Realtime (production)
 const useSocketIO = window.location.hostname === 'localhost' || window.location.hostname.match(/^\d+\.\d+\.\d+\.\d+$/);
 
+// Create Supabase client outside component
+const supabaseClient = supabaseUrl && supabaseKey 
+  ? createClient(supabaseUrl, supabaseKey) 
+  : null;
+
 export function SocketProvider({ children }) {
   const [socket, setSocket] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
-  const [supabase, setSupabase] = useState(null);
-  const [listeners, setListeners] = useState({});
+  const listenersRef = useRef({});
+
+  // Fetch complete order with order_items
+  const fetchCompleteOrder = async (orderId) => {
+    if (!supabaseClient) return null;
+    
+    const { data, error } = await supabaseClient
+      .from('orders')
+      .select(`
+        *,
+        order_items (
+          *,
+          product:products (*)
+        )
+      `)
+      .eq('id', orderId)
+      .single();
+    
+    if (error) {
+      console.error('Error fetching order:', error);
+      return null;
+    }
+    return data;
+  };
 
   useEffect(() => {
     if (useSocketIO) {
@@ -37,53 +64,79 @@ export function SocketProvider({ children }) {
 
         setSocket(socketInstance);
       });
-    } else if (supabaseUrl && supabaseKey) {
+    } else if (supabaseClient) {
       // Use Supabase Realtime for production
-      const client = createClient(supabaseUrl, supabaseKey);
-      setSupabase(client);
+      console.log('Setting up Supabase Realtime...');
       setIsConnected(true);
 
       // Subscribe to orders table changes
-      const ordersChannel = client
-        .channel('orders-changes')
+      const ordersChannel = supabaseClient
+        .channel('db-orders')
         .on('postgres_changes', { 
-          event: '*', 
+          event: 'INSERT', 
+          schema: 'public', 
+          table: 'orders' 
+        }, async (payload) => {
+          console.log('New order:', payload);
+          const completeOrder = await fetchCompleteOrder(payload.new.id);
+          if (completeOrder && listenersRef.current['order:new']) {
+            listenersRef.current['order:new'](completeOrder);
+          }
+        })
+        .on('postgres_changes', { 
+          event: 'UPDATE', 
+          schema: 'public', 
+          table: 'orders' 
+        }, async (payload) => {
+          console.log('Order updated:', payload);
+          const completeOrder = await fetchCompleteOrder(payload.new.id);
+          if (completeOrder) {
+            if (payload.new.status === 'cancelled' && listenersRef.current['order:cancelled']) {
+              listenersRef.current['order:cancelled'](completeOrder);
+            } else if (listenersRef.current['order:status']) {
+              listenersRef.current['order:status'](completeOrder);
+            }
+          }
+        })
+        .on('postgres_changes', { 
+          event: 'DELETE', 
           schema: 'public', 
           table: 'orders' 
         }, (payload) => {
-          console.log('Order change:', payload);
-          // Trigger registered listeners
-          if (payload.eventType === 'INSERT' && listeners['order:new']) {
-            listeners['order:new'](payload.new);
-          }
-          if (payload.eventType === 'UPDATE' && listeners['order:status']) {
-            listeners['order:status'](payload.new);
+          console.log('Order deleted:', payload);
+          if (listenersRef.current['orders:reset']) {
+            listenersRef.current['orders:reset']();
           }
         })
-        .subscribe();
+        .subscribe((status) => {
+          console.log('Orders channel status:', status);
+        });
 
       // Subscribe to products table changes
-      const productsChannel = client
-        .channel('products-changes')
+      const productsChannel = supabaseClient
+        .channel('db-products')
         .on('postgres_changes', { 
           event: 'UPDATE', 
           schema: 'public', 
           table: 'products' 
         }, (payload) => {
-          console.log('Product change:', payload);
-          if (listeners['menu:update']) {
-            listeners['menu:update'](payload.new);
+          console.log('Product updated:', payload);
+          if (listenersRef.current['menu:update']) {
+            listenersRef.current['menu:update'](payload.new);
           }
         })
-        .subscribe();
+        .subscribe((status) => {
+          console.log('Products channel status:', status);
+        });
 
       return () => {
-        ordersChannel.unsubscribe();
-        productsChannel.unsubscribe();
+        console.log('Cleaning up Supabase channels...');
+        supabaseClient.removeChannel(ordersChannel);
+        supabaseClient.removeChannel(productsChannel);
       };
     } else {
       // Fallback: polling mode
-      console.log('Running in polling mode (no realtime)');
+      console.log('Running in polling mode (no realtime) - missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY');
       setIsConnected(true);
     }
 
@@ -100,19 +153,15 @@ export function SocketProvider({ children }) {
       if (socket) {
         socket.on(event, callback);
       } else {
-        // Store listener for Supabase realtime
-        setListeners(prev => ({ ...prev, [event]: callback }));
+        // Store listener for Supabase realtime using ref
+        listenersRef.current[event] = callback;
       }
     }, [socket]),
     off: useCallback((event) => {
       if (socket) {
         socket.off(event);
       } else {
-        setListeners(prev => {
-          const newListeners = { ...prev };
-          delete newListeners[event];
-          return newListeners;
-        });
+        delete listenersRef.current[event];
       }
     }, [socket]),
     emit: useCallback((event, data) => {
@@ -124,7 +173,7 @@ export function SocketProvider({ children }) {
   };
 
   return (
-    <SocketContext.Provider value={{ socket: socketInterface, isConnected, supabase }}>
+    <SocketContext.Provider value={{ socket: socketInterface, isConnected, supabase: supabaseClient }}>
       {children}
     </SocketContext.Provider>
   );
