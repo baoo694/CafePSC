@@ -1,0 +1,145 @@
+.card {
+  position: relative;
+  background: var(--color-foam);
+  border: 2px solid var(--color-cream);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  transition: all 0.3s ease;
+  animation: slideUp 0.4s ease-out backwards;
+  overflow: hidden;
+}
+
+.card:hover:not(.unavailable) {
+  border-color: var(--color-caramel);
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-4px);
+}
+
+.unavailable {
+  cursor: not-allowed;
+}
+
+.overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(245, 230, 211, 0.5);
+  pointer-events: none;
+}
+
+.cardTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-md);
+}
+
+.emoji {
+  font-size: 2.5rem;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+}
+
+.category {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-light-roast);
+  background: var(--color-cream);
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+}
+
+.cardBody {
+  margin-bottom: var(--space-md);
+}
+
+.name {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--color-dark-roast);
+  margin-bottom: var(--space-xs);
+}
+
+.price {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--color-caramel);
+}
+
+.cardFooter {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.addBtn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-lg);
+  background: var(--color-medium-roast);
+  color: var(--color-cream);
+  font-weight: 600;
+  border-radius: var(--radius-full);
+  transition: all 0.2s ease;
+}
+
+.addBtn:hover {
+  background: var(--color-dark-roast);
+  transform: scale(1.05);
+}
+
+.addBtn:active {
+  transform: scale(0.98);
+}
+
+.unavailableTag {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--color-cream);
+  color: var(--color-cancelled);
+  font-size: 0.9rem;
+  font-weight: 500;
+  border-radius: var(--radius-full);
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Mobile responsive */
+@media (max-width: 480px) {
+  .card {
+    padding: var(--space-md);
+  }
+
+  .emoji {
+    font-size: 2rem;
+  }
+
+  .name {
+    font-size: 1.1rem;
+  }
+
+  .price {
+    font-size: 1rem;
+  }
+
+  .addBtn {
+    padding: var(--space-xs) var(--space-md);
+    font-size: 0.9rem;
+  }
+}
+

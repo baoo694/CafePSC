@@ -1,0 +1,241 @@
+.banner {
+  background: var(--color-foam);
+  border-bottom: 3px solid var(--color-pending);
+  border-left: 4px solid var(--color-pending);
+  margin: 0 var(--space-xl);
+  margin-top: var(--space-md);
+  padding: var(--space-md) var(--space-lg);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  animation: slideDown 0.4s ease-out;
+  position: relative;
+}
+
+.banner.pending {
+  border-bottom-color: var(--color-pending);
+  border-left-color: var(--color-pending);
+}
+
+.banner.making {
+  border-bottom-color: var(--color-making);
+  border-left-color: var(--color-making);
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.statusSection {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  margin-bottom: var(--space-sm);
+}
+
+.iconWrapper {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  color: white;
+}
+
+.iconWrapper.pending {
+  background: var(--color-pending);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.iconWrapper.making {
+  background: var(--color-making);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+.statusInfo {
+  flex: 1;
+}
+
+.statusLabel {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--color-dark-roast);
+}
+
+.statusMessage {
+  font-size: 0.85rem;
+  color: var(--color-light-roast);
+}
+
+.orderInfo {
+  position: absolute;
+  top: var(--space-md);
+  right: var(--space-lg);
+}
+
+.queueNumber {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: var(--color-cream);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-md);
+}
+
+.queueLabel {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-light-roast);
+}
+
+.queueValue {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-caramel);
+}
+
+.orderItems {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) 0;
+  border-top: 1px dashed var(--color-cream);
+  margin-top: var(--space-sm);
+}
+
+.itemsLabel {
+  font-size: 0.85rem;
+  color: var(--color-light-roast);
+  white-space: nowrap;
+}
+
+.itemsText {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--color-dark-roast);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.moreOrders {
+  font-size: 0.8rem;
+  color: var(--color-caramel);
+  font-weight: 500;
+  margin-top: var(--space-xs);
+}
+
+.progressBar {
+  height: 4px;
+  background: var(--color-cream);
+  border-radius: var(--radius-full);
+  margin-top: var(--space-sm);
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  width: 30%;
+  background: var(--color-making);
+  border-radius: var(--radius-full);
+  animation: progress 2s ease-in-out infinite;
+}
+
+@keyframes progress {
+  0% {
+    width: 20%;
+    transform: translateX(0);
+  }
+  50% {
+    width: 50%;
+    transform: translateX(100%);
+  }
+  100% {
+    width: 20%;
+    transform: translateX(400%);
+  }
+}
+
+/* Tablet */
+@media (max-width: 768px) {
+  .banner {
+    margin: 0 var(--space-md);
+    margin-top: var(--space-md);
+  }
+}
+
+/* Mobile */
+@media (max-width: 480px) {
+  .banner {
+    margin: 0 var(--space-sm);
+    margin-top: var(--space-sm);
+    padding: var(--space-sm);
+  }
+
+  .statusSection {
+    gap: var(--space-sm);
+  }
+
+  .iconWrapper {
+    width: 36px;
+    height: 36px;
+  }
+
+  .iconWrapper svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .statusLabel {
+    font-size: 0.95rem;
+  }
+
+  .statusMessage {
+    font-size: 0.75rem;
+  }
+
+  .orderInfo {
+    top: var(--space-sm);
+    right: var(--space-sm);
+  }
+
+  .queueNumber {
+    padding: var(--space-xs) var(--space-sm);
+  }
+
+  .queueLabel {
+    font-size: 0.6rem;
+  }
+
+  .queueValue {
+    font-size: 1.2rem;
+  }
+
+  .orderItems {
+    padding: var(--space-xs) 0;
+  }
+
+  .itemsLabel {
+    font-size: 0.75rem;
+  }
+
+  .itemsText {
+    font-size: 0.8rem;
+  }
+}

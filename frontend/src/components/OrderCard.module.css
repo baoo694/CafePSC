@@ -1,0 +1,215 @@
+.card {
+  background: var(--color-foam);
+  border: 2px solid var(--color-cream);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  border-left-width: 5px;
+  animation: slideUp 0.4s ease-out backwards;
+  transition: all 0.2s ease;
+}
+
+.card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.card.pending {
+  border-left-color: var(--color-pending);
+}
+
+.card.making {
+  border-left-color: var(--color-making);
+  background: linear-gradient(135deg, rgba(91, 163, 198, 0.05) 0%, var(--color-foam) 100%);
+}
+
+.card.done {
+  border-left-color: var(--color-done);
+  opacity: 0.7;
+}
+
+.card.cancelled {
+  border-left-color: var(--color-cancelled);
+  opacity: 0.5;
+  background: rgba(199, 90, 90, 0.05);
+}
+
+/* Header */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-md);
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
+.customerInfo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  color: var(--color-medium-roast);
+}
+
+.customerName {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--color-dark-roast);
+}
+
+.orderTime {
+  font-size: 0.85rem;
+  color: var(--color-light-roast);
+  padding-left: var(--space-sm);
+  border-left: 2px solid var(--color-cream);
+}
+
+/* Customer Details */
+.customerDetails {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
+  padding-bottom: var(--space-sm);
+  border-bottom: 1px dashed var(--color-cream);
+}
+
+.detailTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.8rem;
+  color: var(--color-medium-roast);
+  background: var(--color-cream);
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+}
+
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.statusBadge.pending {
+  background: rgba(232, 169, 68, 0.15);
+  color: var(--color-pending);
+}
+
+.statusBadge.making {
+  background: rgba(91, 163, 198, 0.15);
+  color: var(--color-making);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.statusBadge.done {
+  background: rgba(107, 158, 77, 0.15);
+  color: var(--color-done);
+}
+
+.statusBadge.cancelled {
+  background: rgba(199, 90, 90, 0.15);
+  color: var(--color-cancelled);
+}
+
+/* Items */
+.items {
+  margin-bottom: var(--space-md);
+}
+
+.item {
+  padding: var(--space-sm) 0;
+  border-bottom: 1px dashed var(--color-cream);
+}
+
+.item:last-child {
+  border-bottom: none;
+}
+
+.itemMain {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.itemQty {
+  font-weight: 700;
+  color: var(--color-caramel);
+  min-width: 24px;
+}
+
+.itemName {
+  font-weight: 500;
+  color: var(--color-dark-roast);
+}
+
+.itemOptions {
+  font-size: 0.8rem;
+  color: var(--color-light-roast);
+  margin-top: 2px;
+  padding-left: 32px;
+}
+
+/* Note */
+.note {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--color-cream);
+  border-radius: var(--radius-md);
+  font-size: 0.9rem;
+  color: var(--color-medium-roast);
+  margin-bottom: var(--space-md);
+}
+
+/* Actions */
+.actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.actionBtn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-lg);
+  font-weight: 600;
+  border-radius: var(--radius-md);
+  transition: all 0.2s;
+}
+
+.actionBtn.making {
+  background: var(--color-making);
+  color: white;
+}
+
+.actionBtn.done {
+  background: var(--color-done);
+  color: white;
+}
+
+.actionBtn:hover {
+  transform: scale(1.03);
+  filter: brightness(1.1);
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(15px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
