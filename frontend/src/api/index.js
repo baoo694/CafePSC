@@ -1,5 +1,9 @@
-// API URL - sử dụng biến môi trường cho production hoặc detect IP cho development
-const API_URL = import.meta.env.VITE_API_URL || `http://${window.location.hostname}:3001/api`;
+// API URL - sử dụng Vercel API routes hoặc localhost cho development
+const API_URL = import.meta.env.VITE_API_URL || (
+  window.location.hostname === 'localhost' 
+    ? `http://localhost:3001/api`  // Local backend
+    : '/api'  // Vercel serverless functions
+);
 
 // Products API
 export async function fetchProducts() {

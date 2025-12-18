@@ -62,6 +62,11 @@ INSERT INTO products (name, price, category, is_available) VALUES
   ('Nước Ép Cam', 30000, 'juice', true)
 ON CONFLICT DO NOTHING;
 
+-- Enable Realtime for tables (required for Vercel deployment)
+-- Run this in Supabase SQL Editor:
+ALTER PUBLICATION supabase_realtime ADD TABLE orders;
+ALTER PUBLICATION supabase_realtime ADD TABLE products;
+
 -- Enable Row Level Security (optional, can be configured later)
 -- ALTER TABLE products ENABLE ROW LEVEL SECURITY;
 -- ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
