@@ -9,14 +9,24 @@ dotenv.config();
 
 const app = express();
 const server = createServer(app);
+
+// CORS config cho production
+const corsOrigins = process.env.FRONTEND_URL 
+  ? [process.env.FRONTEND_URL, 'http://localhost:5173', 'http://localhost:3000']
+  : '*';
+
 const io = new Server(server, {
   cors: {
-    origin: '*', // Cho phép tất cả origin (IP nội bộ)
+    origin: corsOrigins,
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    credentials: true,
   },
 });
 
-app.use(cors());
+app.use(cors({
+  origin: corsOrigins,
+  credentials: true,
+}));
 app.use(express.json());
 
 // Supabase client

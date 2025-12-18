@@ -1,6 +1,5 @@
-// Tự động detect IP - dùng hostname hiện tại thay vì localhost
-const API_HOST = window.location.hostname;
-const API_URL = `http://${API_HOST}:3001/api`;
+// API URL - sử dụng biến môi trường cho production hoặc detect IP cho development
+const API_URL = import.meta.env.VITE_API_URL || `http://${window.location.hostname}:3001/api`;
 
 // Products API
 export async function fetchProducts() {

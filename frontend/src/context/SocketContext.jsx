@@ -3,8 +3,8 @@ import { io } from 'socket.io-client';
 
 const SocketContext = createContext(null);
 
-// Tự động detect IP - dùng hostname hiện tại
-const SOCKET_URL = `http://${window.location.hostname}:3001`;
+// Socket URL - sử dụng biến môi trường cho production hoặc detect IP cho development
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || `http://${window.location.hostname}:3001`;
 
 export function SocketProvider({ children }) {
   const [socket, setSocket] = useState(null);

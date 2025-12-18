@@ -189,6 +189,41 @@ The app uses a warm, coffee-inspired color palette:
 
 Typography: Playfair Display (headings) + DM Sans (body)
 
+## 🚀 Deployment
+
+### Deploy Backend lên Railway
+
+1. Tạo tài khoản tại [railway.app](https://railway.app)
+2. Kết nối GitHub repository
+3. Chọn folder `backend` làm root
+4. Thêm environment variables:
+   ```
+   PORT=3001
+   SUPABASE_URL=your-supabase-url
+   SUPABASE_ANON_KEY=your-anon-key
+   ADMIN_PASSWORD=your-password
+   FRONTEND_URL=https://your-app.vercel.app
+   ```
+5. Deploy và copy URL backend (ví dụ: `https://cafepsc-production.up.railway.app`)
+
+### Deploy Frontend lên Vercel
+
+1. Tạo tài khoản tại [vercel.com](https://vercel.com)
+2. Import GitHub repository
+3. Cấu hình:
+   - **Root Directory:** `frontend`
+   - **Framework Preset:** Vite
+4. Thêm environment variables:
+   ```
+   VITE_API_URL=https://your-backend.railway.app/api
+   VITE_SOCKET_URL=https://your-backend.railway.app
+   ```
+5. Deploy!
+
+### Sau khi deploy
+
+Quay lại Railway và cập nhật `FRONTEND_URL` với URL Vercel thực tế.
+
 ## 📝 License
 
 MIT License - feel free to use this for your own coffee shop!
