@@ -1,5 +1,6 @@
 import { Routes, Route } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
+import { Analytics } from '@vercel/analytics/react';
 import { SocketProvider } from './context/SocketContext';
 import CustomerPage from './pages/CustomerPage';
 import AdminPage from './pages/AdminPage';
@@ -39,6 +40,7 @@ function App() {
           },
         }}
       />
+      <Analytics />
     </SocketProvider>
   );
 }
