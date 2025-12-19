@@ -167,10 +167,30 @@ export default function AdminPage() {
     }
   };
 
-  // Filter orders
-  const filteredOrders = statusFilter === 'all' 
+  // Filter and sort orders - prioritize pending orders
+  const getOrderPriority = (status) => {
+    switch (status) {
+      case 'pending': return 1;  // Highest priority
+      case 'making': return 2;
+      case 'done': return 3;
+      case 'cancelled': return 4;
+      default: return 5;
+    }
+  };
+
+  const filteredOrders = (statusFilter === 'all' 
     ? orders 
-    : orders.filter(o => o.status === statusFilter);
+    : orders.filter(o => o.status === statusFilter)
+  ).sort((a, b) => {
+    // First sort by priority (pending first)
+    const priorityDiff = getOrderPriority(a.status) - getOrderPriority(b.status);
+    if (priorityDiff !== 0) return priorityDiff;
+    
+    // If same priority, sort by created_at (newest first)
+    const timeA = new Date(a.created_at).getTime();
+    const timeB = new Date(b.created_at).getTime();
+    return timeB - timeA;
+  });
 
   // Count orders by status
   const orderCounts = {
