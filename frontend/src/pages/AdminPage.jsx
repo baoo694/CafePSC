@@ -409,6 +409,7 @@ export default function AdminPage() {
                   key={order.id}
                   order={order}
                   onStatusUpdate={handleStatusUpdate}
+                  onDelete={handleDeleteOrder}
                   style={{ animationDelay: `${index * 0.05}s` }}
                 />
               ))
