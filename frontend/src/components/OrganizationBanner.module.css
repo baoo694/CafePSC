@@ -1,0 +1,167 @@
+.banner {
+  background: linear-gradient(135deg, var(--color-medium-roast) 0%, var(--color-dark-roast) 100%);
+  color: var(--color-cream);
+  padding: var(--space-md) var(--space-lg);
+  box-shadow: var(--shadow-md);
+  position: relative;
+  overflow: hidden;
+}
+
+.banner::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    radial-gradient(circle at 20% 50%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 80% 50%, rgba(255, 255, 255, 0.08) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+.content {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  max-width: 1200px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 1;
+}
+
+.iconWrapper {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.icon {
+  width: 24px;
+  height: 24px;
+  color: var(--color-cream);
+}
+
+.text {
+  flex: 1;
+  min-width: 0;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 var(--space-xs) 0;
+  line-height: 1.4;
+  color: var(--color-foam);
+}
+
+.subtitle {
+  font-size: 0.875rem;
+  margin: 0;
+  opacity: 0.9;
+  color: var(--color-cream);
+  line-height: 1.4;
+}
+
+.graduationIcon {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  color: var(--color-cream);
+  opacity: 0.7;
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+/* Tablet responsive */
+@media (max-width: 768px) {
+  .banner {
+    padding: var(--space-sm) var(--space-md);
+  }
+
+  .content {
+    gap: var(--space-sm);
+  }
+
+  .iconWrapper {
+    width: 40px;
+    height: 40px;
+  }
+
+  .icon {
+    width: 20px;
+    height: 20px;
+  }
+
+  .title {
+    font-size: 0.9rem;
+  }
+
+  .subtitle {
+    font-size: 0.8rem;
+  }
+
+  .graduationIcon {
+    width: 28px;
+    height: 28px;
+  }
+}
+
+/* Mobile responsive */
+@media (max-width: 480px) {
+  .banner {
+    padding: var(--space-sm);
+  }
+
+  .content {
+    gap: var(--space-xs);
+  }
+
+  .iconWrapper {
+    width: 36px;
+    height: 36px;
+  }
+
+  .icon {
+    width: 18px;
+    height: 18px;
+  }
+
+  .text {
+    flex: 1;
+  }
+
+  .title {
+    font-size: 0.85rem;
+    margin-bottom: 2px;
+    line-height: 1.3;
+  }
+
+  .subtitle {
+    font-size: 0.75rem;
+    line-height: 1.3;
+  }
+
+  .graduationIcon {
+    width: 24px;
+    height: 24px;
+    display: none; /* Hide on very small screens to save space */
+  }
+}
+

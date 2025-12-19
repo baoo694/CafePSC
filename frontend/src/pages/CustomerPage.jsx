@@ -14,6 +14,7 @@ import CustomizeModal from '../components/CustomizeModal';
 import OrderHistoryDrawer from '../components/OrderHistoryDrawer';
 import ActiveOrderBanner from '../components/ActiveOrderBanner';
 import CustomerInfoModal from '../components/CustomerInfoModal';
+import OrganizationBanner from '../components/OrganizationBanner';
 import styles from './CustomerPage.module.css';
 
 export default function CustomerPage() {
@@ -338,6 +339,9 @@ export default function CustomerPage() {
           </button>
         </div>
       </header>
+
+      {/* Organization Banner */}
+      <OrganizationBanner />
 
       {/* Active Order Banner - shows below header when there's pending/making orders */}
       <ActiveOrderBanner orders={orders} allOrders={allOrders} />

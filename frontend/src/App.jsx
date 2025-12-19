@@ -5,10 +5,12 @@ import { SocketProvider } from './context/SocketContext';
 import CustomerPage from './pages/CustomerPage';
 import AdminPage from './pages/AdminPage';
 import LandingPage from './pages/LandingPage';
+import FacebookPopup from './components/FacebookPopup';
 
 function App() {
   return (
     <SocketProvider>
+      <FacebookPopup />
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/order" element={<CustomerPage />} />
