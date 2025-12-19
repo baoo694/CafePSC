@@ -3,9 +3,8 @@ import styles from './OrderCard.module.css';
 
 // Size price additions (must match CustomizeModal and CartDrawer)
 const SIZE_PRICES = {
-  'S': 0,
-  'M': 5000,
-  'L': 10000,
+  'M': 0,
+  'L': 5000,
 };
 
 // Calculate unit price based on product price + size addition

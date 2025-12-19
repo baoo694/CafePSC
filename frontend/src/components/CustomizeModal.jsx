@@ -3,9 +3,8 @@ import { X, Plus, Minus } from 'lucide-react';
 import styles from './CustomizeModal.module.css';
 
 const SIZE_OPTIONS = [
-  { value: 'S', label: 'Nhỏ (S)', priceAdd: 0 },
-  { value: 'M', label: 'Vừa (M)', priceAdd: 5000 },
-  { value: 'L', label: 'Lớn (L)', priceAdd: 10000 },
+  { value: 'M', label: 'Vừa (M)', priceAdd: 0 },
+  { value: 'L', label: 'Lớn (L)', priceAdd: 5000 },
 ];
 
 const SUGAR_OPTIONS = [
@@ -25,7 +24,7 @@ const ICE_OPTIONS = [
 
 export default function CustomizeModal({ product, onClose, onConfirm }) {
   const [options, setOptions] = useState({
-    size: 'S',
+    size: 'M',
     sugar: '70%',
     ice: 'Bình thường',
   });
@@ -79,8 +78,10 @@ export default function CustomizeModal({ product, onClose, onConfirm }) {
                   onClick={() => setOptions(prev => ({ ...prev, size: size.value }))}
                 >
                   <span className={styles.optionText}>{size.label}</span>
-                  {size.priceAdd > 0 && (
-                    <span className={styles.optionPrice}>+{size.priceAdd.toLocaleString('vi-VN')}đ</span>
+                  {size.priceAdd !== 0 && (
+                    <span className={styles.optionPrice}>
+                      {size.priceAdd > 0 ? '+' : ''}{size.priceAdd.toLocaleString('vi-VN')}đ
+                    </span>
                   )}
                 </button>
               ))}

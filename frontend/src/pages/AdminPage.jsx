@@ -124,8 +124,9 @@ export default function AdminPage() {
     });
 
     // Order deleted (individual order deletion)
-    socket.on('order:deleted', (deletedOrderId) => {
-      setOrders(prev => prev.filter(o => o.id !== deletedOrderId));
+    socket.on('order:deleted', (data) => {
+      const orderId = typeof data === 'object' ? data.id : data;
+      setOrders(prev => prev.filter(o => o.id !== orderId));
     });
 
     // Order cancelled
@@ -181,12 +182,12 @@ export default function AdminPage() {
     
     try {
       await deleteOrder(orderId);
-      // Only remove the specific order from state, don't reload or reset
+      // Remove the specific order from state
+      // Socket event will also handle this, but we do it immediately for better UX
       setOrders(prev => prev.filter(o => o.id !== orderId));
-      setAllOrders(prev => prev.filter(o => o.id !== orderId));
       toast.success('Đã xóa đơn hàng');
     } catch (error) {
-      toast.error('Không thể xóa đơn hàng');
+      toast.error(error.message || 'Không thể xóa đơn hàng');
     }
   };
 

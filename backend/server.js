@@ -248,6 +248,36 @@ app.put('/api/orders/:id/cancel', async (req, res) => {
   }
 });
 
+// Delete a specific order (admin action)
+app.delete('/api/orders/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // First delete order items (due to foreign key constraint)
+    const { error: itemsError } = await supabase
+      .from('order_items')
+      .delete()
+      .eq('order_id', id);
+    
+    if (itemsError) throw itemsError;
+    
+    // Then delete the order
+    const { error: orderError } = await supabase
+      .from('orders')
+      .delete()
+      .eq('id', id);
+    
+    if (orderError) throw orderError;
+    
+    // Broadcast deletion to all clients via socket
+    io.emit('order:deleted', { id });
+    
+    res.json({ message: 'Order deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Reset pending/making orders (admin action) - keeps completed orders for statistics
 app.delete('/api/orders/reset', async (req, res) => {
   try {

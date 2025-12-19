@@ -96,9 +96,19 @@ export default function CustomerPage() {
 
     // New order (for tracking)
     socket.on('order:new', (order) => {
-      setAllOrders(prev => [order, ...prev]);
+      setAllOrders(prev => {
+        // Check if order already exists to prevent duplicates
+        const exists = prev.some(o => o.id === order.id);
+        if (exists) return prev;
+        return [order, ...prev];
+      });
       if (order.customer_name === customerName && order.phone === customerPhone) {
-        setOrders(prev => [order, ...prev]);
+        setOrders(prev => {
+          // Check if order already exists to prevent duplicates
+          const exists = prev.some(o => o.id === order.id);
+          if (exists) return prev;
+          return [order, ...prev];
+        });
         toast.success('Đơn hàng đã được gửi!');
       }
     });
@@ -140,12 +150,20 @@ export default function CustomerPage() {
       }
     });
 
+    // Order deleted (admin action)
+    socket.on('order:deleted', (data) => {
+      const orderId = typeof data === 'object' ? data.id : data;
+      setAllOrders(prev => prev.filter(o => o.id !== orderId));
+      setOrders(prev => prev.filter(o => o.id !== orderId));
+    });
+
     return () => {
       socket.off('menu:update');
       socket.off('order:new');
       socket.off('order:status');
       socket.off('orders:reset');
       socket.off('order:cancelled');
+      socket.off('order:deleted');
     };
   }, [socket, customerName, customerPhone]);
 
@@ -313,6 +331,9 @@ export default function CustomerPage() {
             <p className={styles.subtext}>Hôm nay bạn muốn uống gì?</p>
           </div>
         </div>
+        <div className={styles.headerCenter}>
+          <OrganizationBanner />
+        </div>
         <div className={styles.headerRight}>
           <span className={`${styles.connectionStatus} ${isConnected ? styles.connected : styles.disconnected}`}>
             {isConnected ? <Wifi size={16} /> : <WifiOff size={16} />}
@@ -339,9 +360,6 @@ export default function CustomerPage() {
           </button>
         </div>
       </header>
-
-      {/* Organization Banner */}
-      <OrganizationBanner />
 
       {/* Active Order Banner - shows below header when there's pending/making orders */}
       <ActiveOrderBanner orders={orders} allOrders={allOrders} />
