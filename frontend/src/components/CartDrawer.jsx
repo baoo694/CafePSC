@@ -1,6 +1,20 @@
 import { X, Trash2, ShoppingBag, Send, Loader2, Plus, Minus } from 'lucide-react';
 import styles from './CartDrawer.module.css';
 
+// Size price additions (must match CustomizeModal)
+const SIZE_PRICES = {
+  'S': 0,
+  'M': 5000,
+  'L': 10000,
+};
+
+// Calculate unit price based on product price + size addition
+const calculateUnitPrice = (product, options) => {
+  const basePrice = product.price || 0;
+  const sizeAdd = SIZE_PRICES[options?.size] || 0;
+  return basePrice + sizeAdd;
+};
+
 export default function CartDrawer({
   isOpen,
   onClose,
@@ -13,7 +27,10 @@ export default function CartDrawer({
   isSubmitting,
 }) {
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
-  const total = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+  const total = cart.reduce((sum, item) => {
+    const unitPrice = calculateUnitPrice(item.product, item.options);
+    return sum + unitPrice * item.quantity;
+  }, 0);
 
   const formatOptions = (options) => {
     const parts = [];
@@ -54,13 +71,17 @@ export default function CartDrawer({
               <span>Hãy thêm món vào giỏ để đặt hàng</span>
             </div>
           ) : (
-            cart.map((item) => (
+            cart.map((item) => {
+              const unitPrice = calculateUnitPrice(item.product, item.options);
+              const itemTotal = unitPrice * item.quantity;
+              
+              return (
               <div key={item.id} className={styles.item}>
                 <div className={styles.itemInfo}>
                   <h4 className={styles.itemName}>{item.product.name}</h4>
                   <p className={styles.itemOptions}>{formatOptions(item.options)}</p>
                   <p className={styles.itemPrice}>
-                    {(item.product.price * item.quantity).toLocaleString('vi-VN')}đ
+                    {itemTotal.toLocaleString('vi-VN')}đ
                   </p>
                 </div>
                 <div className={styles.itemActions}>
@@ -87,7 +108,8 @@ export default function CartDrawer({
                   </button>
                 </div>
               </div>
-            ))
+              );
+            })
           )}
         </div>
 
