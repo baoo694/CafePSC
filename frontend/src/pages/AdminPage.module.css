@@ -477,6 +477,89 @@
   padding: var(--space-lg) var(--space-xl);
 }
 
+.dateFilter {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  margin-bottom: var(--space-lg);
+  padding: var(--space-md);
+  background: var(--color-foam);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-cream);
+}
+
+.dateFilterLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-weight: 600;
+  color: var(--color-dark-roast);
+}
+
+.dateSelect {
+  flex: 1;
+  padding: var(--space-sm) var(--space-md);
+  border: 2px solid var(--color-cream);
+  border-radius: var(--radius-md);
+  background: var(--color-milk);
+  color: var(--color-dark-roast);
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.dateSelect:focus {
+  outline: none;
+  border-color: var(--color-caramel);
+  box-shadow: 0 0 0 4px rgba(196, 133, 60, 0.15);
+}
+
+.totalStatsSummary {
+  background: linear-gradient(135deg, var(--color-caramel) 0%, var(--color-medium-roast) 100%);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  margin-bottom: var(--space-lg);
+  box-shadow: var(--shadow-md);
+}
+
+.totalStatsTitle {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  color: white;
+  margin-bottom: var(--space-md);
+  text-align: center;
+}
+
+.totalStatsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--space-md);
+}
+
+.totalStatItem {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding: var(--space-md);
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: var(--radius-md);
+  backdrop-filter: blur(10px);
+}
+
+.totalStatLabel {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 500;
+}
+
+.totalStatValue {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: white;
+}
+
 .statsCards {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -662,6 +745,19 @@
 @media (max-width: 640px) {
   .statsSection {
     padding: var(--space-md);
+  }
+
+  .dateFilter {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .dateFilterLabel {
+    justify-content: center;
+  }
+
+  .totalStatsGrid {
+    grid-template-columns: 1fr;
   }
 
   .statsCards {

@@ -7,7 +7,7 @@ import {
   Coffee, ArrowLeft, RefreshCw, Wifi, WifiOff,
   Package, CheckCircle2, Clock, Loader2, AlertTriangle,
   Bell, ToggleLeft, ToggleRight, Trash2, BarChart3,
-  DollarSign, TrendingUp, ShoppingBag, Lock, LogOut, Eye, EyeOff
+  DollarSign, TrendingUp, ShoppingBag, Lock, LogOut, Eye, EyeOff, Calendar
 } from 'lucide-react';
 import OrderCard from '../components/OrderCard';
 import styles from './AdminPage.module.css';
@@ -21,6 +21,7 @@ export default function AdminPage() {
   const [activeTab, setActiveTab] = useState('orders');
   const [statusFilter, setStatusFilter] = useState('all');
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [selectedDate, setSelectedDate] = useState('all'); // 'all' for total stats, or 'YYYY-MM-DD' for specific date
   
   // Auth state
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -431,13 +432,41 @@ export default function AdminPage() {
       {activeTab === 'stats' && (
         <div className={styles.statsSection}>
           {(() => {
-            // Calculate statistics from completed orders only
-            const completedOrders = orders.filter(o => o.status === 'done');
+            // Size price additions (must match CustomizeModal and CartDrawer)
+            const SIZE_PRICES = {
+              'M': 0,
+              'L': 5000,
+            };
+
+            // Calculate unit price based on product price + size addition
+            const calculateUnitPrice = (product, options) => {
+              const basePrice = product?.price || 0;
+              const sizeAdd = SIZE_PRICES[options?.size] || 0;
+              return basePrice + sizeAdd;
+            };
+
+            // Filter completed orders by date if selected
+            let completedOrders = orders.filter(o => o.status === 'done');
+            
+            if (selectedDate !== 'all') {
+              completedOrders = completedOrders.filter(order => {
+                const orderDate = new Date(order.created_at).toISOString().split('T')[0];
+                return orderDate === selectedDate;
+              });
+            }
+            
+            // Get all unique dates from completed orders for date selector
+            const allDates = [...new Set(
+              orders
+                .filter(o => o.status === 'done')
+                .map(o => new Date(o.created_at).toISOString().split('T')[0])
+            )].sort((a, b) => b.localeCompare(a)); // Sort descending (newest first)
             
             // Total revenue
             const totalRevenue = completedOrders.reduce((sum, order) => {
               const orderTotal = order.order_items?.reduce((itemSum, item) => {
-                return itemSum + (item.product?.price || 0) * item.quantity;
+                const unitPrice = calculateUnitPrice(item.product, item.options_json || {});
+                return itemSum + unitPrice * item.quantity;
               }, 0) || 0;
               return sum + orderTotal;
             }, 0);
@@ -452,12 +481,12 @@ export default function AdminPage() {
             completedOrders.forEach(order => {
               order.order_items?.forEach(item => {
                 const productName = item.product?.name || 'Unknown';
-                const productPrice = item.product?.price || 0;
+                const unitPrice = calculateUnitPrice(item.product, item.options_json || {});
                 if (!productSales[productName]) {
                   productSales[productName] = { quantity: 0, revenue: 0 };
                 }
                 productSales[productName].quantity += item.quantity;
-                productSales[productName].revenue += productPrice * item.quantity;
+                productSales[productName].revenue += unitPrice * item.quantity;
               });
             });
 
@@ -466,12 +495,12 @@ export default function AdminPage() {
             completedOrders.forEach(order => {
               order.order_items?.forEach(item => {
                 const category = item.product?.category || 'other';
-                const productPrice = item.product?.price || 0;
+                const unitPrice = calculateUnitPrice(item.product, item.options_json || {});
                 if (!categorySales[category]) {
                   categorySales[category] = { quantity: 0, revenue: 0 };
                 }
                 categorySales[category].quantity += item.quantity;
-                categorySales[category].revenue += productPrice * item.quantity;
+                categorySales[category].revenue += unitPrice * item.quantity;
               });
             });
 
@@ -487,8 +516,74 @@ export default function AdminPage() {
               other: '📦'
             };
 
+            // Calculate total stats (all time)
+            const allCompletedOrders = orders.filter(o => o.status === 'done');
+            const totalRevenueAllTime = allCompletedOrders.reduce((sum, order) => {
+              const orderTotal = order.order_items?.reduce((itemSum, item) => {
+                const unitPrice = calculateUnitPrice(item.product, item.options_json || {});
+                return itemSum + unitPrice * item.quantity;
+              }, 0) || 0;
+              return sum + orderTotal;
+            }, 0);
+            const totalOrdersAllTime = allCompletedOrders.length;
+            const totalItemsAllTime = allCompletedOrders.reduce((sum, order) => {
+              return sum + (order.order_items?.reduce((itemSum, item) => itemSum + item.quantity, 0) || 0);
+            }, 0);
+
             return (
               <>
+                {/* Date Filter */}
+                <div className={styles.dateFilter}>
+                  <div className={styles.dateFilterLabel}>
+                    <Calendar size={18} />
+                    <span>Chọn ngày:</span>
+                  </div>
+                  <select
+                    value={selectedDate}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    className={styles.dateSelect}
+                  >
+                    <option value="all">Tổng số liệu (Tất cả)</option>
+                    {allDates.map(date => {
+                      const dateObj = new Date(date);
+                      const formattedDate = dateObj.toLocaleDateString('vi-VN', {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      });
+                      return (
+                        <option key={date} value={date}>
+                          {formattedDate}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+
+                {/* Total Stats Summary (when viewing specific date) */}
+                {selectedDate !== 'all' && (
+                  <div className={styles.totalStatsSummary}>
+                    <h3 className={styles.totalStatsTitle}>📈 Tổng số liệu (Tất cả thời gian)</h3>
+                    <div className={styles.totalStatsGrid}>
+                      <div className={styles.totalStatItem}>
+                        <span className={styles.totalStatLabel}>Tổng doanh thu:</span>
+                        <span className={styles.totalStatValue}>
+                          {totalRevenueAllTime.toLocaleString('vi-VN')}đ
+                        </span>
+                      </div>
+                      <div className={styles.totalStatItem}>
+                        <span className={styles.totalStatLabel}>Tổng đơn hàng:</span>
+                        <span className={styles.totalStatValue}>{totalOrdersAllTime}</span>
+                      </div>
+                      <div className={styles.totalStatItem}>
+                        <span className={styles.totalStatLabel}>Tổng sản phẩm:</span>
+                        <span className={styles.totalStatValue}>{totalItemsAllTime}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Summary Cards */}
                 <div className={styles.statsCards}>
                   <div className={styles.statCard}>
@@ -496,7 +591,9 @@ export default function AdminPage() {
                       <DollarSign size={24} />
                     </div>
                     <div className={styles.statInfo}>
-                      <p className={styles.statLabel}>Tổng doanh thu</p>
+                      <p className={styles.statLabel}>
+                        {selectedDate === 'all' ? 'Tổng doanh thu' : 'Doanh thu ngày'}
+                      </p>
                       <h3 className={styles.statValue}>
                         {totalRevenue.toLocaleString('vi-VN')}đ
                       </h3>
@@ -508,7 +605,9 @@ export default function AdminPage() {
                       <ShoppingBag size={24} />
                     </div>
                     <div className={styles.statInfo}>
-                      <p className={styles.statLabel}>Đơn hoàn thành</p>
+                      <p className={styles.statLabel}>
+                        {selectedDate === 'all' ? 'Đơn hoàn thành' : 'Đơn ngày'}
+                      </p>
                       <h3 className={styles.statValue}>{completedOrders.length}</h3>
                     </div>
                   </div>
@@ -518,7 +617,9 @@ export default function AdminPage() {
                       <TrendingUp size={24} />
                     </div>
                     <div className={styles.statInfo}>
-                      <p className={styles.statLabel}>Sản phẩm đã bán</p>
+                      <p className={styles.statLabel}>
+                        {selectedDate === 'all' ? 'Sản phẩm đã bán' : 'Sản phẩm ngày'}
+                      </p>
                       <h3 className={styles.statValue}>{totalItems}</h3>
                     </div>
                   </div>
@@ -526,7 +627,9 @@ export default function AdminPage() {
 
                 {/* Sales by Category */}
                 <div className={styles.statsBlock}>
-                  <h3 className={styles.statsBlockTitle}>📊 Theo danh mục</h3>
+                  <h3 className={styles.statsBlockTitle}>
+                    📊 Theo danh mục {selectedDate !== 'all' && `(${new Date(selectedDate).toLocaleDateString('vi-VN')})`}
+                  </h3>
                   <div className={styles.categoryStats}>
                     {Object.entries(categorySales).map(([category, data]) => (
                       <div key={category} className={styles.categoryItem}>
@@ -552,7 +655,9 @@ export default function AdminPage() {
 
                 {/* Sales by Product */}
                 <div className={styles.statsBlock}>
-                  <h3 className={styles.statsBlockTitle}>🏆 Top sản phẩm bán chạy</h3>
+                  <h3 className={styles.statsBlockTitle}>
+                    🏆 Top sản phẩm bán chạy {selectedDate !== 'all' && `(${new Date(selectedDate).toLocaleDateString('vi-VN')})`}
+                  </h3>
                   <div className={styles.productStats}>
                     {sortedProducts.length === 0 ? (
                       <p className={styles.noData}>Chưa có dữ liệu bán hàng</p>
