@@ -8,8 +8,16 @@ export default function ActiveOrderBanner({ orders, allOrders }) {
   if (activeOrders.length === 0) return null;
 
   // Calculate queue position based on all orders
+  // Queue should be based on creation time (oldest first = position 1)
   const getQueuePosition = (orderId) => {
-    const pendingOrders = allOrders.filter(o => o.status === 'pending' || o.status === 'making');
+    const pendingOrders = allOrders
+      .filter(o => o.status === 'pending' || o.status === 'making')
+      .sort((a, b) => {
+        // Sort by created_at ascending (oldest first)
+        const timeA = new Date(a.created_at).getTime();
+        const timeB = new Date(b.created_at).getTime();
+        return timeA - timeB;
+      });
     return pendingOrders.findIndex(o => o.id === orderId) + 1;
   };
 
