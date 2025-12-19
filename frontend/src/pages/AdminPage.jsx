@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSocket } from '../context/SocketContext';
-import { fetchProducts, fetchOrders, updateProductAvailability, updateOrderStatus, resetAllOrders, adminLogin } from '../api';
+import { fetchProducts, fetchOrders, updateProductAvailability, updateOrderStatus, resetAllOrders, adminLogin, deleteOrder } from '../api';
 import toast from 'react-hot-toast';
 import { 
   Coffee, ArrowLeft, RefreshCw, Wifi, WifiOff,
@@ -164,6 +164,21 @@ export default function AdminPage() {
       setShowResetConfirm(false);
     } catch (error) {
       toast.error('Không thể reset đơn hàng');
+    }
+  };
+
+  // Handle delete order
+  const handleDeleteOrder = async (orderId) => {
+    if (!confirm('Bạn có chắc muốn xóa đơn hàng này?')) {
+      return;
+    }
+    
+    try {
+      await deleteOrder(orderId);
+      setOrders(prev => prev.filter(o => o.id !== orderId));
+      toast.success('Đã xóa đơn hàng');
+    } catch (error) {
+      toast.error('Không thể xóa đơn hàng');
     }
   };
 

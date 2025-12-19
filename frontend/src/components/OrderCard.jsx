@@ -1,4 +1,4 @@
-import { Clock, Coffee, CheckCircle2, User, MessageSquare, ArrowRight, XCircle, Phone, MapPin, DollarSign } from 'lucide-react';
+import { Clock, Coffee, CheckCircle2, User, MessageSquare, ArrowRight, XCircle, Phone, MapPin, DollarSign, Trash2 } from 'lucide-react';
 import styles from './OrderCard.module.css';
 
 // Size price additions (must match CustomizeModal and CartDrawer)
@@ -15,7 +15,7 @@ const calculateUnitPrice = (product, options) => {
   return basePrice + sizeAdd;
 };
 
-export default function OrderCard({ order, onStatusUpdate, style }) {
+export default function OrderCard({ order, onStatusUpdate, onDelete, style }) {
   const { id, customer_name, phone, delivery_address, status, note, order_items, created_at } = order;
 
   const getStatusInfo = (status) => {
@@ -135,8 +135,8 @@ export default function OrderCard({ order, onStatusUpdate, style }) {
       )}
 
       {/* Actions */}
-      {statusInfo.nextStatus && (
-        <div className={styles.actions}>
+      <div className={styles.actions}>
+        {statusInfo.nextStatus && (
           <button
             className={`${styles.actionBtn} ${styles[statusInfo.nextStatus]}`}
             onClick={() => onStatusUpdate(id, statusInfo.nextStatus)}
@@ -144,8 +144,17 @@ export default function OrderCard({ order, onStatusUpdate, style }) {
             <span>{statusInfo.nextLabel}</span>
             <ArrowRight size={16} />
           </button>
-        </div>
-      )}
+        )}
+        {onDelete && (
+          <button
+            className={styles.deleteBtn}
+            onClick={() => onDelete(id)}
+            title="Xóa đơn hàng"
+          >
+            <Trash2 size={16} />
+          </button>
+        )}
+      </div>
     </div>
   );
 }

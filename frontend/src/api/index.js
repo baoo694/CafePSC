@@ -68,6 +68,17 @@ export async function cancelOrder(id) {
   return response.json();
 }
 
+export async function deleteOrder(id) {
+  const response = await fetch(`${API_URL}/orders/${id}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to delete order');
+  }
+  return response.json();
+}
+
 // Admin authentication
 export async function adminLogin(password) {
   const response = await fetch(`${API_URL}/admin/login`, {

@@ -212,6 +212,8 @@
 .actions {
   display: flex;
   justify-content: flex-end;
+  align-items: center;
+  gap: var(--space-sm);
 }
 
 .actionBtn {
@@ -222,6 +224,25 @@
   font-weight: 600;
   border-radius: var(--radius-md);
   transition: all 0.2s;
+}
+
+.deleteBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-sm);
+  background: rgba(199, 90, 90, 0.1);
+  color: var(--color-cancelled);
+  border: 2px solid var(--color-cancelled);
+  border-radius: var(--radius-md);
+  transition: all 0.2s;
+  cursor: pointer;
+}
+
+.deleteBtn:hover {
+  background: var(--color-cancelled);
+  color: white;
+  transform: scale(1.05);
 }
 
 .actionBtn.making {
