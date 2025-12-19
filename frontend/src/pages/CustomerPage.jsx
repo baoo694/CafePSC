@@ -20,7 +20,7 @@ export default function CustomerPage() {
   const { socket, isConnected } = useSocket();
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
-  const [customerStudentId, setCustomerStudentId] = useState('');
+  const [customerDeliveryAddress, setCustomerDeliveryAddress] = useState('');
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
   const [allOrders, setAllOrders] = useState([]);
@@ -37,15 +37,15 @@ export default function CustomerPage() {
   useEffect(() => {
     const name = localStorage.getItem('customerName');
     const phone = localStorage.getItem('customerPhone');
-    const studentId = localStorage.getItem('customerStudentId');
+    const deliveryAddress = localStorage.getItem('customerDeliveryAddress');
     
-    if (!name || !phone || !studentId) {
+    if (!name || !phone || !deliveryAddress) {
       navigate('/');
       return;
     }
     setCustomerName(name);
     setCustomerPhone(phone);
-    setCustomerStudentId(studentId);
+    setCustomerDeliveryAddress(deliveryAddress);
   }, [navigate]);
 
   // Fetch initial data
@@ -204,7 +204,7 @@ export default function CustomerPage() {
       const orderData = {
         customer_name: customerName,
         phone: customerPhone,
-        student_id: customerStudentId,
+        delivery_address: customerDeliveryAddress,
         note: orderNote,
         items: cart.map(item => ({
           product_id: item.product.id,

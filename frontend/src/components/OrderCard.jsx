@@ -1,8 +1,8 @@
-import { Clock, Coffee, CheckCircle2, User, MessageSquare, ArrowRight, XCircle, Phone, Hash } from 'lucide-react';
+import { Clock, Coffee, CheckCircle2, User, MessageSquare, ArrowRight, XCircle, Phone, MapPin } from 'lucide-react';
 import styles from './OrderCard.module.css';
 
 export default function OrderCard({ order, onStatusUpdate, style }) {
-  const { id, customer_name, phone, student_id, status, note, order_items, created_at } = order;
+  const { id, customer_name, phone, delivery_address, status, note, order_items, created_at } = order;
 
   const getStatusInfo = (status) => {
     switch (status) {
@@ -59,10 +59,10 @@ export default function OrderCard({ order, onStatusUpdate, style }) {
             {phone}
           </span>
         )}
-        {student_id && (
+        {delivery_address && (
           <span className={styles.detailTag}>
-            <Hash size={12} />
-            {student_id}
+            <MapPin size={12} />
+            {delivery_address}
           </span>
         )}
       </div>

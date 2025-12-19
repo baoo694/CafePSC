@@ -38,7 +38,7 @@ export default async function handler(req, res) {
   // POST new order
   if (req.method === 'POST') {
     try {
-      const { customer_name, phone, student_id, note, items } = req.body;
+      const { customer_name, phone, delivery_address, note, items } = req.body;
 
       const orderData = {
         customer_name,
@@ -47,7 +47,7 @@ export default async function handler(req, res) {
       };
 
       if (phone) orderData.phone = phone;
-      if (student_id) orderData.student_id = student_id;
+      if (delivery_address) orderData.delivery_address = delivery_address;
 
       const { data: order, error: orderError } = await supabase
         .from('orders')

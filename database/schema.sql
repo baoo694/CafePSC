@@ -17,15 +17,17 @@ CREATE TABLE IF NOT EXISTS orders (
   id SERIAL PRIMARY KEY,
   customer_name VARCHAR(255) NOT NULL,
   phone VARCHAR(20),
-  student_id VARCHAR(50),
+  delivery_address VARCHAR(255),
   status VARCHAR(50) DEFAULT 'pending' CHECK (status IN ('pending', 'making', 'done', 'cancelled')),
   note TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Migration: Add columns if table already exists
--- ALTER TABLE orders ADD COLUMN IF NOT EXISTS phone VARCHAR(20);
--- ALTER TABLE orders ADD COLUMN IF NOT EXISTS student_id VARCHAR(50);
+-- Migration: Rename student_id to delivery_address if table already exists
+-- Run this in Supabase SQL Editor if you have existing data:
+-- ALTER TABLE orders RENAME COLUMN student_id TO delivery_address;
+-- Or if column doesn't exist yet:
+-- ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_address VARCHAR(255);
 
 -- Order items table
 CREATE TABLE IF NOT EXISTS order_items (

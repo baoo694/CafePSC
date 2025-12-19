@@ -1,22 +1,22 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Coffee, ArrowRight, Sparkles, Phone, Hash } from 'lucide-react';
+import { Coffee, ArrowRight, Sparkles, Phone, MapPin } from 'lucide-react';
 import styles from './LandingPage.module.css';
 
 export default function LandingPage() {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
-  const [studentId, setStudentId] = useState('');
+  const [deliveryAddress, setDeliveryAddress] = useState('');
   const navigate = useNavigate();
 
-  const isFormValid = name.trim() && phone.trim() && studentId.trim();
+  const isFormValid = name.trim() && phone.trim() && deliveryAddress.trim();
 
   const handleStartOrder = (e) => {
     e.preventDefault();
     if (isFormValid) {
       localStorage.setItem('customerName', name.trim());
       localStorage.setItem('customerPhone', phone.trim());
-      localStorage.setItem('customerStudentId', studentId.trim());
+      localStorage.setItem('customerDeliveryAddress', deliveryAddress.trim());
       navigate('/order');
     }
   };
@@ -79,16 +79,16 @@ export default function LandingPage() {
           </div>
 
           <div className={styles.inputGroup}>
-            <label htmlFor="studentId" className={styles.label}>
-              <Hash size={14} />
-              Mã số sinh viên
+            <label htmlFor="deliveryAddress" className={styles.label}>
+              <MapPin size={14} />
+              Địa chỉ giao hàng
             </label>
             <input
               type="text"
-              id="studentId"
-              value={studentId}
-              onChange={(e) => setStudentId(e.target.value)}
-              placeholder="VD: 22520001"
+              id="deliveryAddress"
+              value={deliveryAddress}
+              onChange={(e) => setDeliveryAddress(e.target.value)}
+              placeholder="VD: Phòng 101, Ký túc xá A"
               className={styles.input}
               autoComplete="off"
               required
