@@ -104,8 +104,9 @@ export function SocketProvider({ children }) {
           table: 'orders' 
         }, (payload) => {
           console.log('Order deleted:', payload);
-          if (listenersRef.current['orders:reset']) {
-            listenersRef.current['orders:reset']();
+          // Use order:deleted event for individual deletion, not orders:reset
+          if (listenersRef.current['order:deleted']) {
+            listenersRef.current['order:deleted'](payload.old.id);
           }
         })
         .subscribe((status) => {

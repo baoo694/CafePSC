@@ -123,6 +123,11 @@ export default function AdminPage() {
       toast('Đã reset đơn hàng (giữ lại thống kê)', { icon: '🔄' });
     });
 
+    // Order deleted (individual order deletion)
+    socket.on('order:deleted', (deletedOrderId) => {
+      setOrders(prev => prev.filter(o => o.id !== deletedOrderId));
+    });
+
     // Order cancelled
     socket.on('order:cancelled', (order) => {
       setOrders(prev => prev.map(o => o.id === order.id ? order : o));
@@ -134,6 +139,7 @@ export default function AdminPage() {
       socket.off('order:status');
       socket.off('menu:update');
       socket.off('orders:reset');
+      socket.off('order:deleted');
       socket.off('order:cancelled');
     };
   }, [socket]);
@@ -175,7 +181,9 @@ export default function AdminPage() {
     
     try {
       await deleteOrder(orderId);
+      // Only remove the specific order from state, don't reload or reset
       setOrders(prev => prev.filter(o => o.id !== orderId));
+      setAllOrders(prev => prev.filter(o => o.id !== orderId));
       toast.success('Đã xóa đơn hàng');
     } catch (error) {
       toast.error('Không thể xóa đơn hàng');
