@@ -14,7 +14,6 @@ import CustomizeModal from '../components/CustomizeModal';
 import OrderHistoryDrawer from '../components/OrderHistoryDrawer';
 import ActiveOrderBanner from '../components/ActiveOrderBanner';
 import CustomerInfoModal from '../components/CustomerInfoModal';
-import OrganizationBanner from '../components/OrganizationBanner';
 import styles from './CustomerPage.module.css';
 
 export default function CustomerPage() {
@@ -330,9 +329,6 @@ export default function CustomerPage() {
             </h1>
             <p className={styles.subtext}>Hôm nay bạn muốn uống gì?</p>
           </div>
-        </div>
-        <div className={styles.headerCenter}>
-          <OrganizationBanner />
         </div>
         <div className={styles.headerRight}>
           <span className={`${styles.connectionStatus} ${isConnected ? styles.connected : styles.disconnected}`}>
