@@ -56,9 +56,11 @@ export default function CustomerPage() {
         ]);
         setProducts(productsData);
         setAllOrders(ordersData);
-        // Filter orders by customer name if available
-        if (customerName) {
-          setOrders(ordersData.filter(o => o.customer_name === customerName));
+        // Filter orders by customer name AND phone to ensure uniqueness
+        if (customerName && customerPhone) {
+          setOrders(ordersData.filter(o => 
+            o.customer_name === customerName && o.phone === customerPhone
+          ));
         } else {
           setOrders([]);
         }
@@ -69,7 +71,7 @@ export default function CustomerPage() {
       }
     }
     loadData();
-  }, [customerName]);
+  }, [customerName, customerPhone]);
 
   // Socket event listeners
   useEffect(() => {
@@ -94,7 +96,7 @@ export default function CustomerPage() {
     // New order (for tracking)
     socket.on('order:new', (order) => {
       setAllOrders(prev => [order, ...prev]);
-      if (order.customer_name === customerName) {
+      if (order.customer_name === customerName && order.phone === customerPhone) {
         setOrders(prev => [order, ...prev]);
         toast.success('Đơn hàng đã được gửi!');
       }
@@ -103,10 +105,11 @@ export default function CustomerPage() {
     // Order status updates
     socket.on('order:status', (order) => {
       setAllOrders(prev => prev.map(o => o.id === order.id ? order : o));
-      setOrders(prev => prev.map(o => 
-        o.id === order.id ? order : o
-      ));
-      if (order.customer_name === customerName) {
+      // Only update if it's the current customer's order
+      if (order.customer_name === customerName && order.phone === customerPhone) {
+        setOrders(prev => prev.map(o => 
+          o.id === order.id ? order : o
+        ));
         const statusMessages = {
           making: '🔥 Đơn hàng đang được pha chế!',
           done: '✅ Đơn hàng đã xong! Mời bạn lấy đồ.',
@@ -127,10 +130,11 @@ export default function CustomerPage() {
     // Order cancelled
     socket.on('order:cancelled', (order) => {
       setAllOrders(prev => prev.map(o => o.id === order.id ? order : o));
-      setOrders(prev => prev.map(o => 
-        o.id === order.id ? order : o
-      ));
-      if (order.customer_name === customerName) {
+      // Only update if it's the current customer's order
+      if (order.customer_name === customerName && order.phone === customerPhone) {
+        setOrders(prev => prev.map(o => 
+          o.id === order.id ? order : o
+        ));
         toast('Đơn hàng đã được hủy', { icon: '❌' });
       }
     });
@@ -142,7 +146,7 @@ export default function CustomerPage() {
       socket.off('orders:reset');
       socket.off('order:cancelled');
     };
-  }, [socket, customerName]);
+  }, [socket, customerName, customerPhone]);
 
   // Add to cart with customization
   const handleAddToCart = useCallback((product) => {
