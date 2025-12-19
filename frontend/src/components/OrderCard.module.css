@@ -133,6 +133,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-sm);
+  flex-wrap: wrap;
 }
 
 .itemQty {
@@ -144,6 +145,21 @@
 .itemName {
   font-weight: 500;
   color: var(--color-dark-roast);
+  flex: 1;
+}
+
+.itemPrice {
+  font-weight: 600;
+  color: var(--color-caramel);
+  font-size: 0.95rem;
+}
+
+.itemPriceDetail {
+  font-size: 0.75rem;
+  color: var(--color-light-roast);
+  margin-top: 2px;
+  padding-left: 32px;
+  font-style: italic;
 }
 
 .itemOptions {
@@ -164,6 +180,32 @@
   font-size: 0.9rem;
   color: var(--color-medium-roast);
   margin-bottom: var(--space-md);
+}
+
+/* Order Total */
+.orderTotal {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  background: linear-gradient(135deg, var(--color-cream) 0%, var(--color-milk) 100%);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-md);
+  border: 2px solid var(--color-caramel);
+}
+
+.totalLabel {
+  font-weight: 600;
+  color: var(--color-medium-roast);
+  font-size: 0.95rem;
+}
+
+.totalAmount {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--color-dark-roast);
 }
 
 /* Actions */

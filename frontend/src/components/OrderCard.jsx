@@ -1,5 +1,19 @@
-import { Clock, Coffee, CheckCircle2, User, MessageSquare, ArrowRight, XCircle, Phone, MapPin } from 'lucide-react';
+import { Clock, Coffee, CheckCircle2, User, MessageSquare, ArrowRight, XCircle, Phone, MapPin, DollarSign } from 'lucide-react';
 import styles from './OrderCard.module.css';
+
+// Size price additions (must match CustomizeModal and CartDrawer)
+const SIZE_PRICES = {
+  'S': 0,
+  'M': 5000,
+  'L': 10000,
+};
+
+// Calculate unit price based on product price + size addition
+const calculateUnitPrice = (product, options) => {
+  const basePrice = product?.price || 0;
+  const sizeAdd = SIZE_PRICES[options?.size] || 0;
+  return basePrice + sizeAdd;
+};
 
 export default function OrderCard({ order, onStatusUpdate, style }) {
   const { id, customer_name, phone, delivery_address, status, note, order_items, created_at } = order;
@@ -36,6 +50,16 @@ export default function OrderCard({ order, onStatusUpdate, style }) {
     return parts.length > 0 ? parts.join(' • ') : null;
   };
 
+  // Calculate total order price
+  const calculateTotal = () => {
+    return order_items?.reduce((sum, item) => {
+      const unitPrice = calculateUnitPrice(item.product, item.options_json);
+      return sum + unitPrice * item.quantity;
+    }, 0) || 0;
+  };
+
+  const orderTotal = calculateTotal();
+
   return (
     <div className={`${styles.card} ${styles[statusInfo.color]}`} style={style}>
       {/* Header */}
@@ -69,17 +93,37 @@ export default function OrderCard({ order, onStatusUpdate, style }) {
 
       {/* Order Items */}
       <div className={styles.items}>
-        {order_items?.map((item) => (
-          <div key={item.id} className={styles.item}>
-            <div className={styles.itemMain}>
-              <span className={styles.itemQty}>x{item.quantity}</span>
-              <span className={styles.itemName}>{item.product?.name}</span>
+        {order_items?.map((item) => {
+          const unitPrice = calculateUnitPrice(item.product, item.options_json);
+          const itemTotal = unitPrice * item.quantity;
+          
+          return (
+            <div key={item.id} className={styles.item}>
+              <div className={styles.itemMain}>
+                <span className={styles.itemQty}>x{item.quantity}</span>
+                <span className={styles.itemName}>{item.product?.name}</span>
+                <span className={styles.itemPrice}>
+                  {itemTotal.toLocaleString('vi-VN')}đ
+                </span>
+              </div>
+              {formatOptions(item.options_json) && (
+                <p className={styles.itemOptions}>{formatOptions(item.options_json)}</p>
+              )}
+              <div className={styles.itemPriceDetail}>
+                {item.quantity} × {unitPrice.toLocaleString('vi-VN')}đ
+              </div>
             </div>
-            {formatOptions(item.options_json) && (
-              <p className={styles.itemOptions}>{formatOptions(item.options_json)}</p>
-            )}
-          </div>
-        ))}
+          );
+        })}
+      </div>
+
+      {/* Order Total */}
+      <div className={styles.orderTotal}>
+        <DollarSign size={16} />
+        <span className={styles.totalLabel}>Tổng tiền:</span>
+        <span className={styles.totalAmount}>
+          {orderTotal.toLocaleString('vi-VN')}đ
+        </span>
       </div>
 
       {/* Note */}
