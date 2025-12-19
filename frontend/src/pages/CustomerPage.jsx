@@ -13,6 +13,7 @@ import CartDrawer from '../components/CartDrawer';
 import CustomizeModal from '../components/CustomizeModal';
 import OrderHistoryDrawer from '../components/OrderHistoryDrawer';
 import ActiveOrderBanner from '../components/ActiveOrderBanner';
+import CustomerInfoModal from '../components/CustomerInfoModal';
 import styles from './CustomerPage.module.css';
 
 export default function CustomerPage() {
@@ -27,26 +28,23 @@ export default function CustomerPage() {
   const [cart, setCart] = useState([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
   const [customizingItem, setCustomizingItem] = useState(null);
   const [orderNote, setOrderNote] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeCategory, setActiveCategory] = useState('all');
 
-  // Get customer info from localStorage
+  // Get customer info from localStorage (optional - can be empty initially)
   useEffect(() => {
-    const name = localStorage.getItem('customerName');
-    const phone = localStorage.getItem('customerPhone');
-    const deliveryAddress = localStorage.getItem('customerDeliveryAddress');
+    const name = localStorage.getItem('customerName') || '';
+    const phone = localStorage.getItem('customerPhone') || '';
+    const deliveryAddress = localStorage.getItem('customerDeliveryAddress') || '';
     
-    if (!name || !phone || !deliveryAddress) {
-      navigate('/');
-      return;
-    }
     setCustomerName(name);
     setCustomerPhone(phone);
     setCustomerDeliveryAddress(deliveryAddress);
-  }, [navigate]);
+  }, []);
 
   // Fetch initial data
   useEffect(() => {
@@ -195,16 +193,41 @@ export default function CustomerPage() {
     }).filter(Boolean));
   }, []);
 
-  // Place order
-  const handlePlaceOrder = async () => {
+  // Handle customer info confirmation
+  const handleCustomerInfoConfirm = (info) => {
+    setCustomerName(info.name);
+    setCustomerPhone(info.phone);
+    setCustomerDeliveryAddress(info.deliveryAddress);
+    
+    // Save to localStorage
+    localStorage.setItem('customerName', info.name);
+    localStorage.setItem('customerPhone', info.phone);
+    localStorage.setItem('customerDeliveryAddress', info.deliveryAddress);
+    
+    setIsInfoModalOpen(false);
+    // Proceed with order
+    submitOrder(info);
+  };
+
+  // Submit order (internal function)
+  const submitOrder = async (customerInfo = null) => {
     if (cart.length === 0) return;
+
+    const finalName = customerInfo?.name || customerName;
+    const finalPhone = customerInfo?.phone || customerPhone;
+    const finalAddress = customerInfo?.deliveryAddress || customerDeliveryAddress;
+
+    if (!finalName || !finalPhone || !finalAddress) {
+      toast.error('Vui lòng nhập đầy đủ thông tin');
+      return;
+    }
 
     setIsSubmitting(true);
     try {
       const orderData = {
-        customer_name: customerName,
-        phone: customerPhone,
-        delivery_address: customerDeliveryAddress,
+        customer_name: finalName,
+        phone: finalPhone,
+        delivery_address: finalAddress,
         note: orderNote,
         items: cart.map(item => ({
           product_id: item.product.id,
@@ -221,6 +244,20 @@ export default function CustomerPage() {
       toast.error('Không thể đặt hàng. Vui lòng thử lại.');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  // Place order (check info first)
+  const handlePlaceOrder = () => {
+    if (cart.length === 0) return;
+
+    // Check if customer info is complete
+    if (!customerName || !customerPhone || !customerDeliveryAddress) {
+      // Show info modal
+      setIsInfoModalOpen(true);
+    } else {
+      // Proceed directly
+      submitOrder();
     }
   };
 
@@ -260,7 +297,9 @@ export default function CustomerPage() {
             <ArrowLeft size={20} />
           </button>
           <div>
-            <h1 className={styles.greeting}>Xin chào, {customerName}!</h1>
+            <h1 className={styles.greeting}>
+              {customerName ? `Xin chào, ${customerName}!` : 'Xin chào!'}
+            </h1>
             <p className={styles.subtext}>Hôm nay bạn muốn uống gì?</p>
           </div>
         </div>
@@ -351,6 +390,18 @@ export default function CustomerPage() {
         onClose={() => setIsHistoryOpen(false)}
         orders={orders}
         onCancelOrder={handleCancelOrder}
+      />
+
+      {/* Customer Info Modal */}
+      <CustomerInfoModal
+        isOpen={isInfoModalOpen}
+        onClose={() => setIsInfoModalOpen(false)}
+        onConfirm={handleCustomerInfoConfirm}
+        initialData={{
+          name: customerName,
+          phone: customerPhone,
+          deliveryAddress: customerDeliveryAddress,
+        }}
       />
     </div>
   );
