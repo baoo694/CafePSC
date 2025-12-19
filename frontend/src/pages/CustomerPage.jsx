@@ -56,23 +56,28 @@ export default function CustomerPage() {
         ]);
         setProducts(productsData);
         setAllOrders(ordersData);
-        setOrders(ordersData.filter(o => o.customer_name === customerName));
+        // Filter orders by customer name if available
+        if (customerName) {
+          setOrders(ordersData.filter(o => o.customer_name === customerName));
+        } else {
+          setOrders([]);
+        }
         setIsLoading(false);
       } catch (error) {
         toast.error('Không thể tải dữ liệu');
         setIsLoading(false);
       }
     }
-    if (customerName) {
-      loadData();
-    }
+    loadData();
   }, [customerName]);
 
   // Socket event listeners
   useEffect(() => {
-    if (!socket || !customerName) return;
+    if (!socket) return;
 
-    socket.emit('join:customer', customerName);
+    if (customerName) {
+      socket.emit('join:customer', customerName);
+    }
 
     // Menu updates
     socket.on('menu:update', (product) => {
