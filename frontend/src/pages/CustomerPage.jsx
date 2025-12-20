@@ -6,7 +6,7 @@ import toast from 'react-hot-toast';
 import { 
   Coffee, ShoppingCart, X, Plus, Minus, Clock, 
   CheckCircle2, Loader2, ArrowLeft, Wifi, WifiOff,
-  Bell, ClipboardList
+  Bell, ClipboardList, Edit2
 } from 'lucide-react';
 import MenuCard from '../components/MenuCard';
 import CartDrawer from '../components/CartDrawer';
@@ -29,6 +29,7 @@ export default function CustomerPage() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
+  const [isEditInfoMode, setIsEditInfoMode] = useState(false); // true = chỉnh sửa, false = nhập để đặt hàng
   const [customizingItem, setCustomizingItem] = useState(null);
   const [pendingDirectOrder, setPendingDirectOrder] = useState(null); // { product, options, quantity }
   const [orderNote, setOrderNote] = useState('');
@@ -109,7 +110,7 @@ export default function CustomerPage() {
           if (exists) return prev;
           return [order, ...prev];
         });
-        toast.success('Đơn hàng đã được gửi!');
+        // Note: Toast is already shown after createOrder success, so we don't show it here to avoid duplicate
       }
     });
 
@@ -233,6 +234,13 @@ export default function CustomerPage() {
     localStorage.setItem('customerDeliveryAddress', info.deliveryAddress);
     
     setIsInfoModalOpen(false);
+    setIsEditInfoMode(false);
+    
+    // If in edit mode, just update info and show success
+    if (isEditInfoMode) {
+      toast.success('Đã cập nhật thông tin!');
+      return;
+    }
     
     // Check if this is a direct order from modal
     if (pendingDirectOrder) {
@@ -282,6 +290,12 @@ export default function CustomerPage() {
       // Proceed with order from cart
       submitOrder(info);
     }
+  };
+
+  // Handle edit customer info
+  const handleEditCustomerInfo = () => {
+    setIsEditInfoMode(true);
+    setIsInfoModalOpen(true);
   };
 
   // Submit order (internal function)
@@ -441,11 +455,22 @@ export default function CustomerPage() {
           <button className={styles.backBtn} onClick={() => navigate('/')}>
             <ArrowLeft size={20} />
           </button>
-          <div>
-            <h1 className={styles.greeting}>
-              {customerName ? `Xin chào, ${customerName}!` : 'Xin chào!'}
-            </h1>
-            <p className={styles.subtext}>Hôm nay bạn muốn uống gì?</p>
+          <div className={styles.greetingContainer}>
+            <div>
+              <h1 className={styles.greeting}>
+                {customerName ? `Xin chào, ${customerName}!` : 'Xin chào!'}
+              </h1>
+              <p className={styles.subtext}>Hôm nay bạn muốn uống gì?</p>
+            </div>
+            {customerName && (
+              <button 
+                className={styles.editInfoBtn}
+                onClick={handleEditCustomerInfo}
+                title="Chỉnh sửa thông tin"
+              >
+                <Edit2 size={16} />
+              </button>
+            )}
           </div>
         </div>
         <div className={styles.headerRight}>
@@ -546,9 +571,9 @@ export default function CustomerPage() {
         isOpen={isInfoModalOpen}
         onClose={() => {
           setIsInfoModalOpen(false);
+          setIsEditInfoMode(false);
           setPendingDirectOrder(null); // Clear pending order if modal is closed without confirming
         }}
-        onClose={() => setIsInfoModalOpen(false)}
         onConfirm={handleCustomerInfoConfirm}
         initialData={{
           name: customerName,

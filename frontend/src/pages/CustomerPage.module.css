@@ -45,6 +45,31 @@
   flex-shrink: 0;
 }
 
+.greetingContainer {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-sm);
+}
+
+.editInfoBtn {
+  padding: var(--space-xs);
+  color: var(--color-light-roast);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 4px;
+}
+
+.editInfoBtn:hover {
+  color: var(--color-medium-roast);
+  background: var(--color-cream);
+}
+
 .headerCenter {
   flex: 1;
   display: flex;
