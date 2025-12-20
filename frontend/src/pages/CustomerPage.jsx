@@ -30,6 +30,7 @@ export default function CustomerPage() {
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
   const [customizingItem, setCustomizingItem] = useState(null);
+  const [pendingDirectOrder, setPendingDirectOrder] = useState(null); // { product, options, quantity }
   const [orderNote, setOrderNote] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -221,7 +222,7 @@ export default function CustomerPage() {
   }, []);
 
   // Handle customer info confirmation
-  const handleCustomerInfoConfirm = (info) => {
+  const handleCustomerInfoConfirm = async (info) => {
     setCustomerName(info.name);
     setCustomerPhone(info.phone);
     setCustomerDeliveryAddress(info.deliveryAddress);
@@ -232,8 +233,38 @@ export default function CustomerPage() {
     localStorage.setItem('customerDeliveryAddress', info.deliveryAddress);
     
     setIsInfoModalOpen(false);
-    // Proceed with order
-    submitOrder(info);
+    
+    // Check if this is a direct order from modal
+    if (pendingDirectOrder) {
+      // Place order directly with the product from modal
+      const { product, options, quantity } = pendingDirectOrder;
+      setPendingDirectOrder(null);
+      
+      setIsSubmitting(true);
+      try {
+        const orderData = {
+          customer_name: info.name,
+          phone: info.phone,
+          delivery_address: info.deliveryAddress,
+          note: '',
+          items: [{
+            product_id: product.id,
+            quantity: quantity,
+            options: options,
+          }],
+        };
+
+        await createOrder(orderData);
+        toast.success('Đơn hàng đã được gửi!');
+      } catch (error) {
+        toast.error('Không thể đặt hàng. Vui lòng thử lại.');
+      } finally {
+        setIsSubmitting(false);
+      }
+    } else {
+      // Proceed with order from cart
+      submitOrder(info);
+    }
   };
 
   // Submit order (internal function)
@@ -287,6 +318,42 @@ export default function CustomerPage() {
       submitOrder();
     }
   };
+
+  // Place order directly from modal (without adding to cart)
+  const handlePlaceOrderDirect = useCallback(async (product, options, quantity) => {
+    // Check if customer info is complete
+    if (!customerName || !customerPhone || !customerDeliveryAddress) {
+      // Store product info temporarily to place order after info is confirmed
+      setPendingDirectOrder({ product, options, quantity });
+      setCustomizingItem(null); // Close customize modal
+      setIsInfoModalOpen(true); // Open info modal
+      return;
+    }
+
+    // Place order directly
+    setIsSubmitting(true);
+    try {
+      const orderData = {
+        customer_name: customerName,
+        phone: customerPhone,
+        delivery_address: customerDeliveryAddress,
+        note: '',
+        items: [{
+          product_id: product.id,
+          quantity: quantity,
+          options: options,
+        }],
+      };
+
+      await createOrder(orderData);
+      setCustomizingItem(null);
+      toast.success('Đơn hàng đã được gửi!');
+    } catch (error) {
+      toast.error('Không thể đặt hàng. Vui lòng thử lại.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [customerName, customerPhone, customerDeliveryAddress]);
 
   // Cancel order
   const handleCancelOrder = async (orderId) => {
@@ -406,8 +473,12 @@ export default function CustomerPage() {
       {customizingItem && (
         <CustomizeModal
           product={customizingItem}
-          onClose={() => setCustomizingItem(null)}
+          onClose={() => {
+            setCustomizingItem(null);
+            setPendingDirectOrder(null); // Clear pending order if modal is closed
+          }}
           onConfirm={handleConfirmCustomization}
+          onPlaceOrder={handlePlaceOrderDirect}
         />
       )}
 
@@ -422,6 +493,10 @@ export default function CustomerPage() {
       {/* Customer Info Modal */}
       <CustomerInfoModal
         isOpen={isInfoModalOpen}
+        onClose={() => {
+          setIsInfoModalOpen(false);
+          setPendingDirectOrder(null); // Clear pending order if modal is closed without confirming
+        }}
         onClose={() => setIsInfoModalOpen(false)}
         onConfirm={handleCustomerInfoConfirm}
         initialData={{

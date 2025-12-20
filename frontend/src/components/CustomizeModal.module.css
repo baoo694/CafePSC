@@ -206,19 +206,43 @@
   color: var(--color-dark-roast);
 }
 
-.confirmBtn {
+.buttonGroup {
+  display: flex;
+  gap: var(--space-sm);
   width: 100%;
+}
+
+.addToCartBtn,
+.placeOrderBtn {
+  flex: 1;
   padding: var(--space-md) var(--space-xl);
-  background: linear-gradient(135deg, var(--color-medium-roast) 0%, var(--color-dark-roast) 100%);
-  color: var(--color-cream);
   font-size: 1.1rem;
   font-weight: 600;
   border-radius: var(--radius-md);
   transition: all 0.3s ease;
   box-shadow: var(--shadow-md);
+  border: none;
+  cursor: pointer;
 }
 
-.confirmBtn:hover {
+.addToCartBtn {
+  background: var(--color-milk);
+  color: var(--color-medium-roast);
+  border: 2px solid var(--color-medium-roast);
+}
+
+.addToCartBtn:hover {
+  background: var(--color-cream);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+.placeOrderBtn {
+  background: linear-gradient(135deg, var(--color-medium-roast) 0%, var(--color-dark-roast) 100%);
+  color: var(--color-cream);
+}
+
+.placeOrderBtn:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow-lg);
 }
@@ -343,7 +367,12 @@
     font-size: 1.25rem;
   }
 
-  .confirmBtn {
+  .buttonGroup {
+    flex-direction: column;
+  }
+
+  .addToCartBtn,
+  .placeOrderBtn {
     padding: var(--space-sm) var(--space-lg);
     font-size: 1rem;
   }

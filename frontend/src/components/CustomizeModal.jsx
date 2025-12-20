@@ -22,7 +22,7 @@ const ICE_OPTIONS = [
   { value: 'Nhiều đá', label: 'Nhiều đá' },
 ];
 
-export default function CustomizeModal({ product, onClose, onConfirm }) {
+export default function CustomizeModal({ product, onClose, onConfirm, onPlaceOrder }) {
   const [options, setOptions] = useState({
     size: 'M',
     sugar: '70%',
@@ -47,6 +47,12 @@ export default function CustomizeModal({ product, onClose, onConfirm }) {
 
   const handleConfirm = () => {
     onConfirm(product, options, quantity);
+  };
+
+  const handlePlaceOrder = () => {
+    if (onPlaceOrder) {
+      onPlaceOrder(product, options, quantity);
+    }
   };
 
   return (
@@ -148,9 +154,16 @@ export default function CustomizeModal({ product, onClose, onConfirm }) {
               </span>
             </div>
           </div>
-          <button className={styles.confirmBtn} onClick={handleConfirm}>
-            Thêm vào giỏ hàng
-          </button>
+          <div className={styles.buttonGroup}>
+            <button className={styles.addToCartBtn} onClick={handleConfirm}>
+              Thêm vào giỏ hàng
+            </button>
+            {onPlaceOrder && (
+              <button className={styles.placeOrderBtn} onClick={handlePlaceOrder}>
+                Đặt hàng
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>
