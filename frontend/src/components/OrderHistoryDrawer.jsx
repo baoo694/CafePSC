@@ -2,6 +2,19 @@ import { Clock, Coffee, CheckCircle2, XCircle, X, ChevronDown, ChevronUp } from 
 import { useState } from 'react';
 import styles from './OrderHistoryDrawer.module.css';
 
+// Size price additions (must match CustomizeModal and CartDrawer)
+const SIZE_PRICES = {
+  'M': 0,
+  'L': 5000,
+};
+
+// Calculate unit price based on product price + size addition
+const calculateUnitPrice = (product, options) => {
+  const basePrice = product?.price || 0;
+  const sizeAdd = SIZE_PRICES[options?.size] || 0;
+  return basePrice + sizeAdd;
+};
+
 export default function OrderHistoryDrawer({ isOpen, onClose, orders, onCancelOrder }) {
   const [expandedOrderId, setExpandedOrderId] = useState(null);
 
@@ -35,7 +48,10 @@ export default function OrderHistoryDrawer({ isOpen, onClose, orders, onCancelOr
   };
 
   const calculateTotal = (orderItems) => {
-    return orderItems?.reduce((sum, item) => sum + (item.product?.price || 0) * item.quantity, 0) || 0;
+    return orderItems?.reduce((sum, item) => {
+      const unitPrice = calculateUnitPrice(item.product, item.options_json);
+      return sum + unitPrice * item.quantity;
+    }, 0) || 0;
   };
 
   const toggleExpand = (orderId) => {
@@ -120,7 +136,7 @@ export default function OrderHistoryDrawer({ isOpen, onClose, orders, onCancelOr
                               <span className={styles.detailQty}>x{item.quantity}</span>
                               <span className={styles.detailName}>{item.product?.name}</span>
                               <span className={styles.detailPrice}>
-                                {item.product?.price?.toLocaleString('vi-VN')}đ
+                                {calculateUnitPrice(item.product, item.options_json).toLocaleString('vi-VN')}đ
                               </span>
                             </div>
                             {formatOptions(item.options_json) && (

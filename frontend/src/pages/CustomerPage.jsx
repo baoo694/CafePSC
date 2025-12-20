@@ -254,7 +254,24 @@ export default function CustomerPage() {
           }],
         };
 
-        await createOrder(orderData);
+        const newOrder = await createOrder(orderData);
+        
+        // Update orders state immediately
+        setAllOrders(prev => {
+          const exists = prev.some(o => o.id === newOrder.id);
+          if (exists) return prev;
+          return [newOrder, ...prev];
+        });
+        
+        // Update customer orders if it matches
+        if (newOrder.customer_name === info.name && newOrder.phone === info.phone) {
+          setOrders(prev => {
+            const exists = prev.some(o => o.id === newOrder.id);
+            if (exists) return prev;
+            return [newOrder, ...prev];
+          });
+        }
+        
         toast.success('Đơn hàng đã được gửi!');
       } catch (error) {
         toast.error('Không thể đặt hàng. Vui lòng thử lại.');
@@ -294,7 +311,24 @@ export default function CustomerPage() {
         })),
       };
 
-      await createOrder(orderData);
+      const newOrder = await createOrder(orderData);
+      
+      // Update orders state immediately
+      setAllOrders(prev => {
+        const exists = prev.some(o => o.id === newOrder.id);
+        if (exists) return prev;
+        return [newOrder, ...prev];
+      });
+      
+      // Update customer orders if it matches
+      if (newOrder.customer_name === finalName && newOrder.phone === finalPhone) {
+        setOrders(prev => {
+          const exists = prev.some(o => o.id === newOrder.id);
+          if (exists) return prev;
+          return [newOrder, ...prev];
+        });
+      }
+      
       setCart([]);
       setOrderNote('');
       setIsCartOpen(false);
@@ -345,8 +379,25 @@ export default function CustomerPage() {
         }],
       };
 
-      await createOrder(orderData);
+      const newOrder = await createOrder(orderData);
       setCustomizingItem(null);
+      
+      // Update orders state immediately
+      setAllOrders(prev => {
+        const exists = prev.some(o => o.id === newOrder.id);
+        if (exists) return prev;
+        return [newOrder, ...prev];
+      });
+      
+      // Update customer orders if it matches
+      if (newOrder.customer_name === customerName && newOrder.phone === customerPhone) {
+        setOrders(prev => {
+          const exists = prev.some(o => o.id === newOrder.id);
+          if (exists) return prev;
+          return [newOrder, ...prev];
+        });
+      }
+      
       toast.success('Đơn hàng đã được gửi!');
     } catch (error) {
       toast.error('Không thể đặt hàng. Vui lòng thử lại.');
