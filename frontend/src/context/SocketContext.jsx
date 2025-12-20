@@ -10,9 +10,21 @@ const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 // Check if we should use Socket.IO (local dev) or Supabase Realtime (production)
 const useSocketIO = window.location.hostname === 'localhost' || window.location.hostname.match(/^\d+\.\d+\.\d+\.\d+$/);
 
-// Create Supabase client outside component
+// Create Supabase client outside component với config tối ưu
 const supabaseClient = supabaseUrl && supabaseKey 
-  ? createClient(supabaseUrl, supabaseKey) 
+  ? createClient(supabaseUrl, supabaseKey, {
+      realtime: {
+        // Tối ưu Realtime connections
+        params: {
+          eventsPerSecond: 10, // Giới hạn events để giảm load
+        },
+      },
+      global: {
+        headers: {
+          'x-client-info': 'cafepsc-frontend',
+        },
+      },
+    }) 
   : null;
 
 export function SocketProvider({ children }) {
@@ -69,9 +81,17 @@ export function SocketProvider({ children }) {
       console.log('Setting up Supabase Realtime...');
       setIsConnected(true);
 
-      // Subscribe to orders table changes
-      const ordersChannel = supabaseClient
-        .channel('db-orders')
+      // Tối ưu: Sử dụng MỘT channel duy nhất thay vì 2 channels riêng biệt
+      // Giúp giảm số lượng connections từ 2 xuống 1 per user
+      const mainChannel = supabaseClient
+        .channel('cafepsc-main', {
+          config: {
+            // Tối ưu broadcast và presence
+            broadcast: { self: false },
+            presence: { key: '' },
+          },
+        })
+        // Orders: INSERT
         .on('postgres_changes', { 
           event: 'INSERT', 
           schema: 'public', 
@@ -83,6 +103,7 @@ export function SocketProvider({ children }) {
             listenersRef.current['order:new'](completeOrder);
           }
         })
+        // Orders: UPDATE
         .on('postgres_changes', { 
           event: 'UPDATE', 
           schema: 'public', 
@@ -98,24 +119,18 @@ export function SocketProvider({ children }) {
             }
           }
         })
+        // Orders: DELETE
         .on('postgres_changes', { 
           event: 'DELETE', 
           schema: 'public', 
           table: 'orders' 
         }, (payload) => {
           console.log('Order deleted:', payload);
-          // Use order:deleted event for individual deletion, not orders:reset
           if (listenersRef.current['order:deleted']) {
             listenersRef.current['order:deleted'](payload.old.id);
           }
         })
-        .subscribe((status) => {
-          console.log('Orders channel status:', status);
-        });
-
-      // Subscribe to products table changes
-      const productsChannel = supabaseClient
-        .channel('db-products')
+        // Products: UPDATE (chỉ cần UPDATE, không cần INSERT/DELETE)
         .on('postgres_changes', { 
           event: 'UPDATE', 
           schema: 'public', 
@@ -127,13 +142,19 @@ export function SocketProvider({ children }) {
           }
         })
         .subscribe((status) => {
-          console.log('Products channel status:', status);
+          console.log('Main channel status:', status);
+          if (status === 'SUBSCRIBED') {
+            setIsConnected(true);
+          } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
+            setIsConnected(false);
+          }
         });
 
       return () => {
-        console.log('Cleaning up Supabase channels...');
-        supabaseClient.removeChannel(ordersChannel);
-        supabaseClient.removeChannel(productsChannel);
+        console.log('Cleaning up Supabase channel...');
+        if (mainChannel) {
+          supabaseClient.removeChannel(mainChannel);
+        }
       };
     } else {
       // Fallback: polling mode
