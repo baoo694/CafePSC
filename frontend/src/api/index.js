@@ -51,8 +51,14 @@ export async function updateProductAvailability(id, isAvailable) {
 
 // Orders API
 export async function fetchOrders() {
-  const response = await fetch(`${API_URL}/orders`);
-  if (!response.ok) throw new Error('Failed to fetch orders');
+  const response = await fetch(`${API_URL}/orders`, {
+    method: 'GET',
+    credentials: 'include', // Gửi cookies (httpOnly) để authenticate
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Failed to fetch orders' }));
+    throw new Error(error.error || 'Failed to fetch orders');
+  }
   return response.json();
 }
 

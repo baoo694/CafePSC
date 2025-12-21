@@ -129,6 +129,16 @@ export function verifyCSRF(req) {
 
   const isValid = verifyCSRFToken(csrfToken, sessionId);
   if (!isValid) {
+    // Check if sessionId is old format (base64 admin:timestamp) vs new format (JWT)
+    const isOldTokenFormat = sessionId && !sessionId.includes('.') && sessionId.length < 100;
+    
+    if (isOldTokenFormat) {
+      return { 
+        valid: false, 
+        error: 'Authentication token is outdated. Please log out and log in again to get a new token.' 
+      };
+    }
+    
     // Try to decode token to see if it's old format
     try {
       // If it's old format (hex string), it will fail to decode
@@ -136,7 +146,11 @@ export function verifyCSRF(req) {
     } catch {
       return { valid: false, error: 'CSRF token format is outdated. Please log in again.' };
     }
-    return { valid: false, error: 'Invalid or expired CSRF token. Please log in again.' };
+    
+    return { 
+      valid: false, 
+      error: 'Invalid or expired CSRF token. Please log out and log in again to get a new token.' 
+    };
   }
 
   return { valid: true };
