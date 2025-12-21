@@ -1,6 +1,6 @@
 import { getSupabaseClient } from '../lib/supabase.js';
 import { verifyAdminToken } from '../lib/auth.js';
-import { rateLimit, customerRateLimit, isIPBanned, recordSpamAttempt } from '../lib/rateLimit.js';
+import { rateLimit, customerRateLimit, isIPBanned, isCustomerBanned, recordSpamAttempt } from '../lib/rateLimit.js';
 import { detectSpamOrder } from '../lib/spamDetection.js';
 
 // Helper function để set CORS headers
@@ -85,6 +85,15 @@ export default async function handler(req, res) {
       // Parse body (minimal - chỉ lấy thông tin cần thiết cho spam check)
       const { customer_name, phone, delivery_address } = req.body || {};
       
+      // Check customer ban (customer-based banlist - phù hợp mạng chung)
+      if (customer_name && phone) {
+        if (isCustomerBanned(customer_name, phone)) {
+          return res.status(403).json({ 
+            error: 'Tài khoản của bạn đã bị tạm thời chặn do spam. Vui lòng thử lại sau 5 phút.' 
+          });
+        }
+      }
+      
       // EARLY SPAM DETECTION: Phát hiện spam ngay, không xử lý logic phức tạp
       const spamCheck = detectSpamOrder({ customer_name, phone, delivery_address });
       if (spamCheck.isSpam) {
@@ -94,8 +103,8 @@ export default async function handler(req, res) {
                    req.connection?.remoteAddress || 
                    'unknown';
         
-        // Record spam attempt and ban if threshold reached
-        const isBanned = recordSpamAttempt(ip);
+        // Record spam attempt and ban customer (not IP) if threshold reached
+        const banResult = recordSpamAttempt(ip, customer_name, phone);
         
         console.warn('Spam detected:', {
           ip,
@@ -104,14 +113,25 @@ export default async function handler(req, res) {
           delivery_address,
           reason: spamCheck.reason,
           pattern: spamCheck.pattern,
-          banned: isBanned
+          banned: banResult.banned,
+          banType: banResult.type
         });
         
         // Return immediately - no further processing
-        return res.status(isBanned ? 403 : 400).json({ 
-          error: isBanned 
-            ? 'IP của bạn đã bị tạm thời chặn do spam. Vui lòng thử lại sau 5 phút.'
-            : 'Đơn hàng không hợp lệ. Vui lòng sử dụng thông tin thật của bạn.' 
+        if (banResult.banned) {
+          if (banResult.type === 'customer') {
+            return res.status(403).json({ 
+              error: 'Tài khoản của bạn đã bị tạm thời chặn do spam. Vui lòng thử lại sau 5 phút.' 
+            });
+          } else if (banResult.type === 'ip') {
+            return res.status(403).json({ 
+              error: 'IP của bạn đã bị tạm thời chặn do DDoS. Vui lòng thử lại sau 5 phút.' 
+            });
+          }
+        }
+        
+        return res.status(400).json({ 
+          error: 'Đơn hàng không hợp lệ. Vui lòng sử dụng thông tin thật của bạn.' 
         });
       }
       

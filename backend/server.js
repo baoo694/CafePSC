@@ -274,9 +274,11 @@ function detectSpamPattern(customerName, phone, deliveryAddress) {
 
 // Spam tracking for backend
 const spamAttempts = new Map();
-const bannedIPs = new Map();
+const bannedIPs = new Map(); // Only for severe DDoS
+const bannedCustomers = new Map(); // Customer-based banlist
 const BAN_DURATION = 5 * 60 * 1000; // 5 minutes
-const SPAM_THRESHOLD = 5; // Ban after 5 spam attempts
+const SPAM_THRESHOLD = 5; // Ban customer after 5 spam attempts
+const IP_DDOS_THRESHOLD = 100; // Ban IP only if > 100 requests/min
 
 function isIPBanned(ip) {
   const banData = bannedIPs.get(ip);
@@ -291,26 +293,66 @@ function isIPBanned(ip) {
   return true;
 }
 
-function recordSpamAttempt(ip) {
+function isCustomerBanned(customerName, phone) {
+  if (!customerName || !phone) return false;
+  
+  const customerKey = `${customerName.trim().toLowerCase()}:${phone.trim()}`;
+  const banData = bannedCustomers.get(customerKey);
+  if (!banData) return false;
+  
   const now = Date.now();
-  const attempts = spamAttempts.get(ip) || { count: 0, firstAttempt: now };
+  if (now - banData.bannedAt > BAN_DURATION) {
+    bannedCustomers.delete(customerKey);
+    return false;
+  }
+  return true;
+}
+
+function recordSpamAttempt(ip, customerName, phone) {
+  const now = Date.now();
   
-  attempts.count++;
-  attempts.lastAttempt = now;
+  // Track IP spam attempts (for DDoS detection)
+  const ipAttempts = spamAttempts.get(ip) || { count: 0, firstAttempt: now };
+  ipAttempts.count++;
+  ipAttempts.lastAttempt = now;
   
-  if (now - attempts.firstAttempt > 60 * 1000) {
-    attempts.count = 1;
-    attempts.firstAttempt = now;
+  if (now - ipAttempts.firstAttempt > 60 * 1000) {
+    ipAttempts.count = 1;
+    ipAttempts.firstAttempt = now;
   }
   
-  spamAttempts.set(ip, attempts);
+  spamAttempts.set(ip, ipAttempts);
   
-  if (attempts.count >= SPAM_THRESHOLD) {
+  // Ban customer if threshold reached
+  if (customerName && phone) {
+    const customerKey = `${customerName.trim().toLowerCase()}:${phone.trim()}`;
+    const customerAttempts = bannedCustomers.get(customerKey) || { count: 0, firstAttempt: now };
+    
+    customerAttempts.count++;
+    customerAttempts.lastAttempt = now;
+    
+    if (now - customerAttempts.firstAttempt > 60 * 1000) {
+      customerAttempts.count = 1;
+      customerAttempts.firstAttempt = now;
+    }
+    
+    bannedCustomers.set(customerKey, customerAttempts);
+    
+    if (customerAttempts.count >= SPAM_THRESHOLD) {
+      bannedCustomers.set(customerKey, { bannedAt: now });
+      console.warn(`Customer ${customerKey} banned for ${BAN_DURATION / 1000}s due to ${customerAttempts.count} spam attempts`);
+      return { banned: true, type: 'customer' };
+    }
+  }
+  
+  // Ban IP only for severe DDoS
+  if (ipAttempts.count >= IP_DDOS_THRESHOLD) {
     bannedIPs.set(ip, { bannedAt: now });
-    console.warn(`IP ${ip} banned for ${BAN_DURATION / 1000}s due to ${attempts.count} spam attempts`);
-    return true;
+    console.warn(`IP ${ip} banned for ${BAN_DURATION / 1000}s due to severe DDoS (${ipAttempts.count} requests/min)`);
+    return { banned: true, type: 'ip' };
   }
-  return false;
+  
+  return { banned: false };
 }
 
 // Create new order
@@ -331,11 +373,20 @@ app.post('/api/orders', async (req, res) => {
     
     const { customer_name, phone, student_id, note, items, delivery_address } = req.body;
     
+    // Check customer ban (customer-based banlist - phù hợp mạng chung)
+    if (customer_name && phone) {
+      if (isCustomerBanned(customer_name, phone)) {
+        return res.status(403).json({ 
+          error: 'Tài khoản của bạn đã bị tạm thời chặn do spam. Vui lòng thử lại sau 5 phút.' 
+        });
+      }
+    }
+    
     // EARLY SPAM DETECTION: Phát hiện spam ngay, không xử lý logic phức tạp
     const spamCheck = detectSpamPattern(customer_name, phone, delivery_address);
     if (spamCheck.isSpam) {
-      // Record spam attempt and ban if threshold reached
-      const isBanned = recordSpamAttempt(ip);
+      // Record spam attempt and ban customer (not IP) if threshold reached
+      const banResult = recordSpamAttempt(ip, customer_name, phone);
       
       console.warn('Spam detected:', { 
         ip,
@@ -343,14 +394,25 @@ app.post('/api/orders', async (req, res) => {
         phone, 
         delivery_address, 
         reason: spamCheck.reason,
-        banned: isBanned
+        banned: banResult.banned,
+        banType: banResult.type
       });
       
       // Return immediately - no further processing
-      return res.status(isBanned ? 403 : 400).json({ 
-        error: isBanned 
-          ? 'IP của bạn đã bị tạm thời chặn do spam. Vui lòng thử lại sau 5 phút.'
-          : 'Đơn hàng không hợp lệ. Vui lòng sử dụng thông tin thật của bạn.' 
+      if (banResult.banned) {
+        if (banResult.type === 'customer') {
+          return res.status(403).json({ 
+            error: 'Tài khoản của bạn đã bị tạm thời chặn do spam. Vui lòng thử lại sau 5 phút.' 
+          });
+        } else if (banResult.type === 'ip') {
+          return res.status(403).json({ 
+            error: 'IP của bạn đã bị tạm thời chặn do DDoS. Vui lòng thử lại sau 5 phút.' 
+          });
+        }
+      }
+      
+      return res.status(400).json({ 
+        error: 'Đơn hàng không hợp lệ. Vui lòng sử dụng thông tin thật của bạn.' 
       });
     }
     

@@ -5,10 +5,12 @@
 const requestCounts = new Map();
 const customerRequestCounts = new Map(); // For customer-based rate limiting
 const spamAttempts = new Map(); // Track spam attempts per IP
-const bannedIPs = new Map(); // Temporarily banned IPs
+const bannedIPs = new Map(); // Temporarily banned IPs (only for severe DDoS)
+const bannedCustomers = new Map(); // Temporarily banned customers (customer_name + phone)
 const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
 const BAN_DURATION = 5 * 60 * 1000; // 5 minutes ban
-const SPAM_THRESHOLD = 5; // Ban after 5 spam attempts
+const SPAM_THRESHOLD = 5; // Ban customer after 5 spam attempts
+const IP_DDOS_THRESHOLD = 100; // Ban IP only if > 100 requests/min (severe DDoS)
 const MAX_REQUESTS_PER_WINDOW = {
   '/api/orders': 50, // 50 orders per minute per IP (backup limit - cao hơn cho mạng chung)
   '/api/admin/login': 5, // 5 login attempts per minute per IP
@@ -32,7 +34,7 @@ setInterval(() => {
 }, 5 * 60 * 1000);
 
 /**
- * Check if IP is banned
+ * Check if IP is banned (only for severe DDoS)
  */
 export function isIPBanned(ip) {
   const banData = bannedIPs.get(ip);
@@ -49,31 +51,74 @@ export function isIPBanned(ip) {
 }
 
 /**
- * Record spam attempt and ban if threshold reached
+ * Check if customer is banned (customer_name + phone)
  */
-export function recordSpamAttempt(ip) {
+export function isCustomerBanned(customerName, phone) {
+  if (!customerName || !phone) return false;
+  
+  const customerKey = `${customerName.trim().toLowerCase()}:${phone.trim()}`;
+  const banData = bannedCustomers.get(customerKey);
+  if (!banData) return false;
+  
   const now = Date.now();
-  const attempts = spamAttempts.get(ip) || { count: 0, firstAttempt: now };
-  
-  attempts.count++;
-  attempts.lastAttempt = now;
-  
-  // Reset if window passed
-  if (now - attempts.firstAttempt > RATE_LIMIT_WINDOW) {
-    attempts.count = 1;
-    attempts.firstAttempt = now;
+  if (now - banData.bannedAt > BAN_DURATION) {
+    bannedCustomers.delete(customerKey);
+    return false;
   }
   
-  spamAttempts.set(ip, attempts);
+  return true;
+}
+
+/**
+ * Record spam attempt and ban customer if threshold reached
+ * IP ban only for severe DDoS (> 100 requests/min)
+ */
+export function recordSpamAttempt(ip, customerName, phone) {
+  const now = Date.now();
   
-  // Ban if threshold reached
-  if (attempts.count >= SPAM_THRESHOLD) {
+  // Track IP spam attempts (for DDoS detection)
+  const ipAttempts = spamAttempts.get(ip) || { count: 0, firstAttempt: now };
+  ipAttempts.count++;
+  ipAttempts.lastAttempt = now;
+  
+  if (now - ipAttempts.firstAttempt > RATE_LIMIT_WINDOW) {
+    ipAttempts.count = 1;
+    ipAttempts.firstAttempt = now;
+  }
+  
+  spamAttempts.set(ip, ipAttempts);
+  
+  // Ban customer if threshold reached (customer_name + phone)
+  if (customerName && phone) {
+    const customerKey = `${customerName.trim().toLowerCase()}:${phone.trim()}`;
+    const customerAttempts = bannedCustomers.get(customerKey) || { count: 0, firstAttempt: now };
+    
+    customerAttempts.count++;
+    customerAttempts.lastAttempt = now;
+    
+    if (now - customerAttempts.firstAttempt > RATE_LIMIT_WINDOW) {
+      customerAttempts.count = 1;
+      customerAttempts.firstAttempt = now;
+    }
+    
+    bannedCustomers.set(customerKey, customerAttempts);
+    
+    // Ban customer after SPAM_THRESHOLD attempts
+    if (customerAttempts.count >= SPAM_THRESHOLD) {
+      bannedCustomers.set(customerKey, { bannedAt: now });
+      console.warn(`Customer ${customerKey} banned for ${BAN_DURATION / 1000}s due to ${customerAttempts.count} spam attempts`);
+      return { banned: true, type: 'customer' };
+    }
+  }
+  
+  // Ban IP only for severe DDoS (> 100 requests/min)
+  if (ipAttempts.count >= IP_DDOS_THRESHOLD) {
     bannedIPs.set(ip, { bannedAt: now });
-    console.warn(`IP ${ip} banned for ${BAN_DURATION / 1000}s due to ${attempts.count} spam attempts`);
-    return true;
+    console.warn(`IP ${ip} banned for ${BAN_DURATION / 1000}s due to severe DDoS (${ipAttempts.count} requests/min)`);
+    return { banned: true, type: 'ip' };
   }
   
-  return false;
+  return { banned: false };
 }
 
 export function rateLimit(req, endpoint = 'default') {
