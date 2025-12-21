@@ -1,8 +1,6 @@
 import { getSupabaseClient } from '../../../lib/supabase.js';
 import { rateLimit } from '../../../lib/rateLimit.js';
 
-const supabase = getSupabaseClient();
-
 export default async function handler(req, res) {
   // CORS headers
   const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || ['*'];
@@ -39,6 +37,8 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Invalid order ID' });
       }
 
+      const supabase = getSupabaseClient();
+      
       // Check if order is pending
       const { data: existingOrder, error: checkError } = await supabase
         .from('orders')
