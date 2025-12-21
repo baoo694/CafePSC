@@ -33,7 +33,8 @@ export default async function handler(req, res) {
 
     try {
       // Validate input
-      if (!id || isNaN(parseInt(id))) {
+      const orderId = parseInt(id);
+      if (!id || isNaN(orderId)) {
         return res.status(400).json({ error: 'Invalid order ID' });
       }
 
@@ -43,10 +44,18 @@ export default async function handler(req, res) {
       const { data: existingOrder, error: checkError } = await supabase
         .from('orders')
         .select('status, customer_name, phone')
-        .eq('id', id)
+        .eq('id', orderId)
         .single();
 
-      if (checkError || !existingOrder) {
+      if (checkError) {
+        console.error('Error checking order:', checkError);
+        if (checkError.code === 'PGRST116') {
+          return res.status(404).json({ error: 'Order not found' });
+        }
+        throw checkError;
+      }
+
+      if (!existingOrder) {
         return res.status(404).json({ error: 'Order not found' });
       }
 
@@ -58,20 +67,20 @@ export default async function handler(req, res) {
       // Frontend should send these to verify ownership
       const { customer_name, phone } = req.body;
       
-      if (customer_name && phone) {
-        // Verify ownership
-        if (existingOrder.customer_name !== customer_name.trim() || 
-            existingOrder.phone !== phone.trim()) {
-          return res.status(403).json({ error: 'Không có quyền hủy đơn hàng này' });
-        }
+      if (!customer_name || !phone) {
+        return res.status(400).json({ error: 'customer_name và phone là bắt buộc để xác minh quyền sở hữu đơn hàng' });
       }
-      // If no customer info provided, allow cancel (backward compatibility)
-      // But recommend frontend always send customer info
+      
+      // Verify ownership
+      if (existingOrder.customer_name !== customer_name.trim() || 
+          existingOrder.phone !== phone.trim()) {
+        return res.status(403).json({ error: 'Không có quyền hủy đơn hàng này' });
+      }
 
       const { data, error } = await supabase
         .from('orders')
         .update({ status: 'cancelled' })
-        .eq('id', id)
+        .eq('id', orderId)
         .select(`
           *,
           order_items (
@@ -81,10 +90,22 @@ export default async function handler(req, res) {
         `)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error updating order:', error);
+        throw error;
+      }
+      
+      if (!data) {
+        return res.status(404).json({ error: 'Order not found' });
+      }
+      
       return res.status(200).json(data);
     } catch (error) {
-      return res.status(500).json({ error: error.message });
+      console.error('Cancel order error:', error);
+      return res.status(500).json({ 
+        error: error.message || 'Internal server error',
+        debug: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      });
     }
   }
 
