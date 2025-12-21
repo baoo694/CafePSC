@@ -21,6 +21,14 @@ export default async function handler(req, res) {
 
   const { id } = req.query;
 
+  // Debug logging
+  console.log('Cancel order request:', { 
+    method: req.method, 
+    id, 
+    query: req.query,
+    body: req.body 
+  });
+
   if (req.method === 'PUT') {
     // Rate limiting
     const rateLimitCheck = rateLimit(req, '/api/orders/cancel');
@@ -33,12 +41,25 @@ export default async function handler(req, res) {
 
     try {
       // Validate input
+      if (!id) {
+        console.error('Missing id in query:', req.query);
+        return res.status(400).json({ error: 'Invalid order ID: missing id parameter' });
+      }
+      
       const orderId = parseInt(id);
-      if (!id || isNaN(orderId)) {
-        return res.status(400).json({ error: 'Invalid order ID' });
+      if (isNaN(orderId)) {
+        console.error('Invalid id format:', id);
+        return res.status(400).json({ error: `Invalid order ID: ${id} is not a number` });
       }
 
+      console.log('Parsed order ID:', orderId);
+
       const supabase = getSupabaseClient();
+      
+      if (!supabase) {
+        console.error('Supabase client is null');
+        return res.status(500).json({ error: 'Database connection error' });
+      }
       
       // Check if order is pending
       const { data: existingOrder, error: checkError } = await supabase
