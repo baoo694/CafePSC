@@ -1,8 +1,8 @@
-import { getSupabaseClient } from './lib/supabase.js';
+import { getSupabaseClient } from '../lib/supabase.js';
 
 const supabase = getSupabaseClient();
 
-import { rateLimit } from './lib/rateLimit.js';
+import { rateLimit } from '../lib/rateLimit.js';
 
 export default async function handler(req, res) {
   // CORS headers

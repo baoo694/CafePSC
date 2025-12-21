@@ -1,5 +1,5 @@
-import { rateLimit } from '../lib/rateLimit.js';
-import { generateCSRFToken } from '../lib/csrf.js';
+import { rateLimit } from '../../lib/rateLimit.js';
+import { generateCSRFToken } from '../../lib/csrf.js';
 
 export default async function handler(req, res) {
   // CORS headers

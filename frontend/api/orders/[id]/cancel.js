@@ -1,5 +1,5 @@
-import { getSupabaseClient } from '../../lib/supabase.js';
-import { rateLimit } from '../../lib/rateLimit.js';
+import { getSupabaseClient } from '../../../lib/supabase.js';
+import { rateLimit } from '../../../lib/rateLimit.js';
 
 const supabase = getSupabaseClient();
 

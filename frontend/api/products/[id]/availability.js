@@ -1,6 +1,6 @@
-import { getAdminSupabaseClient } from '../../lib/supabase.js';
-import { verifyAdminToken } from '../../lib/auth.js';
-import { requireCSRF } from '../../lib/csrf.js';
+import { getAdminSupabaseClient } from '../../../lib/supabase.js';
+import { verifyAdminToken } from '../../../lib/auth.js';
+import { requireCSRF } from '../../../lib/csrf.js';
 
 export default async function handler(req, res) {
   // CORS headers với credentials support
