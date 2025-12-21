@@ -1,6 +1,6 @@
 import { getSupabaseClient } from '../lib/supabase.js';
 import { verifyAdminToken } from '../lib/auth.js';
-import { rateLimit } from '../lib/rateLimit.js';
+import { rateLimit, customerRateLimit } from '../lib/rateLimit.js';
 
 // Helper function để set CORS headers
 function setCORSHeaders(res, req, methods = 'GET, POST, OPTIONS') {
@@ -71,16 +71,33 @@ export default async function handler(req, res) {
     if (req.method === 'POST') {
       setCORSHeaders(res, req, 'POST, OPTIONS');
       
-      const rateLimitCheck = rateLimit(req, '/api/orders');
-      if (!rateLimitCheck.allowed) {
-        res.setHeader('Retry-After', rateLimitCheck.retryAfter);
+      // Validate customer info first (needed for customer-based rate limiting)
+      const { customer_name, phone } = req.body || {};
+      
+      // Customer-based rate limiting (ưu tiên cho môi trường trường học)
+      if (customer_name && phone) {
+        const customerRateLimitCheck = customerRateLimit(customer_name, phone);
+        if (!customerRateLimitCheck.allowed) {
+          res.setHeader('Retry-After', customerRateLimitCheck.retryAfter);
+          return res.status(429).json({ 
+            error: customerRateLimitCheck.error || 'Bạn đã đặt quá nhiều đơn hàng. Vui lòng đợi một chút.' 
+          });
+        }
+      }
+      
+      // IP-based rate limiting (backup - với limit cao hơn cho mạng chung)
+      // Tăng limit lên 50 để không ảnh hưởng khi nhiều người dùng chung IP
+      const ipRateLimitCheck = rateLimit(req, '/api/orders');
+      if (!ipRateLimitCheck.allowed) {
+        // Chỉ chặn nếu vượt quá 50 requests/phút (cho toàn bộ mạng)
+        res.setHeader('Retry-After', ipRateLimitCheck.retryAfter);
         return res.status(429).json({ 
-          error: rateLimitCheck.error || 'Too many requests. Please try again later.' 
+          error: 'Quá nhiều yêu cầu từ mạng này. Vui lòng thử lại sau.' 
         });
       }
 
       try {
-        const { customer_name, phone, delivery_address, note, items } = req.body;
+        const { delivery_address, note, items } = req.body;
 
         // Validate customer_name
         if (!customer_name || typeof customer_name !== 'string') {
