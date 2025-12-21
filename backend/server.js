@@ -276,6 +276,7 @@ function detectSpamPattern(customerName, phone, deliveryAddress) {
 const spamAttempts = new Map();
 const bannedIPs = new Map(); // Only for severe DDoS
 const bannedCustomers = new Map(); // Customer-based banlist
+const SPAM_WINDOW = 2 * 60 * 1000; // 2 minutes (for spam tracking)
 const BAN_DURATION = 5 * 60 * 1000; // 5 minutes
 const SPAM_THRESHOLD = 5; // Ban customer after 5 spam attempts
 const IP_DDOS_THRESHOLD = 100; // Ban IP only if > 100 requests/min
@@ -316,7 +317,7 @@ function recordSpamAttempt(ip, customerName, phone) {
   ipAttempts.count++;
   ipAttempts.lastAttempt = now;
   
-  if (now - ipAttempts.firstAttempt > 60 * 1000) {
+  if (now - ipAttempts.firstAttempt > SPAM_WINDOW) {
     ipAttempts.count = 1;
     ipAttempts.firstAttempt = now;
   }
@@ -331,7 +332,7 @@ function recordSpamAttempt(ip, customerName, phone) {
     customerAttempts.count++;
     customerAttempts.lastAttempt = now;
     
-    if (now - customerAttempts.firstAttempt > 60 * 1000) {
+    if (now - customerAttempts.firstAttempt > SPAM_WINDOW) {
       customerAttempts.count = 1;
       customerAttempts.firstAttempt = now;
     }

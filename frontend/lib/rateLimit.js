@@ -7,7 +7,8 @@ const customerRequestCounts = new Map(); // For customer-based rate limiting
 const spamAttempts = new Map(); // Track spam attempts per IP
 const bannedIPs = new Map(); // Temporarily banned IPs (only for severe DDoS)
 const bannedCustomers = new Map(); // Temporarily banned customers (customer_name + phone)
-const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
+const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute (for rate limiting)
+const SPAM_WINDOW = 2 * 60 * 1000; // 2 minutes (for spam tracking)
 const BAN_DURATION = 5 * 60 * 1000; // 5 minutes ban
 const SPAM_THRESHOLD = 5; // Ban customer after 5 spam attempts
 const IP_DDOS_THRESHOLD = 100; // Ban IP only if > 100 requests/min (severe DDoS)
@@ -81,7 +82,7 @@ export function recordSpamAttempt(ip, customerName, phone) {
   ipAttempts.count++;
   ipAttempts.lastAttempt = now;
   
-  if (now - ipAttempts.firstAttempt > RATE_LIMIT_WINDOW) {
+  if (now - ipAttempts.firstAttempt > SPAM_WINDOW) {
     ipAttempts.count = 1;
     ipAttempts.firstAttempt = now;
   }
@@ -96,7 +97,7 @@ export function recordSpamAttempt(ip, customerName, phone) {
     customerAttempts.count++;
     customerAttempts.lastAttempt = now;
     
-    if (now - customerAttempts.firstAttempt > RATE_LIMIT_WINDOW) {
+    if (now - customerAttempts.firstAttempt > SPAM_WINDOW) {
       customerAttempts.count = 1;
       customerAttempts.firstAttempt = now;
     }
