@@ -183,10 +183,15 @@ function detectSpamPattern(customerName, phone, deliveryAddress) {
   
   const name = customerName.trim().toLowerCase();
   
-  // Pattern: khach1, khach2, test1, user1, customer1...
-  const spamNamePattern = /^(khach|test|user|customer|guest|demo|spam|hack)\d+$/i;
-  if (spamNamePattern.test(name)) {
-    return { isSpam: true, reason: 'Tên khách hàng có pattern spam (tăng dần)' };
+  // Pattern: khach1, khach2, "Khách 1", "Khách 2"... (có hoặc không có khoảng trắng)
+  // Chặn "Khách n" với n từ 1 đến 100000
+  const sequentialMatch = name.match(/^(khách|khach|test|user|customer|guest|demo|spam|hack)\s*(\d+)$/i);
+  if (sequentialMatch) {
+    const number = parseInt(sequentialMatch[2]);
+    // Chặn nếu số từ 1 đến 100000
+    if (number >= 1 && number <= 100000) {
+      return { isSpam: true, reason: `Tên khách hàng có pattern spam (tăng dần: Khách ${number})` };
+    }
   }
   
   // Pattern: tên quá ngắn + số (ví dụ: a1, b2)

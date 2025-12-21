@@ -5,12 +5,10 @@
 
 // Blacklist patterns
 const SPAM_PATTERNS = {
-  // Pattern tăng dần: khach1, khach2, khach3...
-  sequentialNumbers: /^(khach|test|user|customer|guest|demo)\d+$/i,
   // Pattern số điện thoại tăng dần: 0900000001, 0900000002...
   sequentialPhone: /^0\d{8}(0[1-9]|[1-9]\d)$/,
   // Pattern địa chỉ tăng dần: A1, A2, A3... hoặc address1, address2...
-  sequentialAddress: /^(A|address|diachi|add)\d+$/i,
+  sequentialAddress: /^(A|address|diachi|add)\s*\d+$/i,
 };
 
 // Blacklist từng phần
@@ -29,13 +27,21 @@ export function detectSpamName(customerName) {
   
   const name = customerName.trim().toLowerCase();
   
-  // Check sequential number pattern
-  if (SPAM_PATTERNS.sequentialNumbers.test(name)) {
-    return {
-      isSpam: true,
-      reason: 'Tên khách hàng có pattern spam (tăng dần)',
-      pattern: 'sequential_numbers'
-    };
+  // Check sequential number pattern (khach1, Khách 1, Khách1...)
+  // Chặn pattern "Khách n" với n từ 1 đến 100000
+  // Pattern: "Khách 1", "Khách 2", "khach1", "Khách1" (có hoặc không có khoảng trắng)
+  const sequentialMatch = name.match(/^(khách|khach|test|user|customer|guest|demo|spam|hack)\s*(\d+)$/i);
+  if (sequentialMatch) {
+    const number = parseInt(sequentialMatch[2]);
+    // Chặn nếu số từ 1 đến 100000
+    if (number >= 1 && number <= 100000) {
+      return {
+        isSpam: true,
+        reason: `Tên khách hàng có pattern spam (tăng dần: Khách ${number})`,
+        pattern: 'sequential_numbers',
+        detectedNumber: number
+      };
+    }
   }
   
   // Check blacklisted names
