@@ -40,14 +40,7 @@ export default async function handler(req, res) {
       const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || ['*'];
       const csrfCheck = requireCSRF(req, allowedOrigins);
       if (!csrfCheck.valid) {
-        // Log for debugging (only in development)
-        if (process.env.NODE_ENV === 'development') {
-          console.error('CSRF validation failed:', csrfCheck.error);
-        }
-        return res.status(403).json({ 
-          error: 'CSRF validation failed: ' + csrfCheck.error,
-          hint: 'Please log out and log in again if you recently upgraded to JWT tokens.'
-        });
+        return res.status(403).json({ error: 'CSRF validation failed: ' + csrfCheck.error });
       }
 
       try {

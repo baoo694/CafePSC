@@ -4,7 +4,6 @@ import { Server } from 'socket.io';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { createClient } from '@supabase/supabase-js';
-import { generateAdminToken, verifyAdminToken as verifyJWT, getTokenFromRequest } from './jwt.js';
 
 dotenv.config();
 
@@ -45,24 +44,53 @@ app.post('/api/admin/login', (req, res) => {
   const { password } = req.body;
   
   if (password === ADMIN_PASSWORD) {
-    // Generate JWT token (secure, signed with secret key)
-    const token = generateAdminToken();
+    // Tạo token đơn giản (trong thực tế nên dùng JWT)
+    const token = Buffer.from(`admin:${Date.now()}`).toString('base64');
     res.json({ success: true, token });
   } else {
     res.status(401).json({ success: false, error: 'Mật khẩu không đúng' });
   }
 });
 
-// Helper function to verify admin token (now uses JWT)
+// Helper function to verify admin token
 const verifyAdminToken = (req) => {
-  const token = getTokenFromRequest(req);
+  const authHeader = req.headers.authorization;
   
-  if (!token) {
-    return { valid: false, error: 'Missing authentication token' };
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return { valid: false, error: 'Missing or invalid authorization header' };
   }
   
-  // Verify JWT token
-  return verifyJWT(token);
+  const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+  
+  try {
+    // Decode the token (it's base64 encoded)
+    const decoded = Buffer.from(token, 'base64').toString('utf-8');
+    
+    // Check if token format is correct (admin:timestamp)
+    if (!decoded.startsWith('admin:')) {
+      return { valid: false, error: 'Invalid token format' };
+    }
+    
+    // Extract timestamp
+    const timestamp = parseInt(decoded.split(':')[1]);
+    
+    if (isNaN(timestamp)) {
+      return { valid: false, error: 'Invalid token timestamp' };
+    }
+    
+    // Check if token is expired (24 hours)
+    const now = Date.now();
+    const tokenAge = now - timestamp;
+    const maxAge = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+    
+    if (tokenAge > maxAge || tokenAge < 0) {
+      return { valid: false, error: 'Token expired' };
+    }
+    
+    return { valid: true };
+  } catch (error) {
+    return { valid: false, error: 'Invalid token' };
+  }
 };
 
 // Middleware kiểm tra admin token
