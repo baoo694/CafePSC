@@ -56,6 +56,16 @@ export async function fetchOrders() {
   return response.json();
 }
 
+export async function fetchCustomerOrders(customerName, phone) {
+  const params = new URLSearchParams({
+    customer_name: customerName,
+    phone: phone
+  });
+  const response = await fetch(`${API_URL}/orders/customer?${params}`);
+  if (!response.ok) throw new Error('Failed to fetch customer orders');
+  return response.json();
+}
+
 export async function createOrder(orderData) {
   const response = await fetch(`${API_URL}/orders`, {
     method: 'POST',

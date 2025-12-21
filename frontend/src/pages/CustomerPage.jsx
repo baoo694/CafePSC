@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSocket } from '../context/SocketContext';
-import { fetchProducts, fetchOrders, createOrder, cancelOrder } from '../api';
+import { fetchProducts, fetchOrders, fetchCustomerOrders, createOrder, cancelOrder } from '../api';
 import toast from 'react-hot-toast';
 import { 
   Coffee, ShoppingCart, X, Plus, Minus, Clock, 
@@ -55,13 +55,23 @@ export default function CustomerPage() {
         const productsData = await fetchProducts();
         setProducts(productsData);
         
-        // Customer doesn't need to fetch all orders from API
-        // Orders will be received via Socket.IO or Supabase Realtime
-        // Only fetch if customer info is available (for initial load)
-        // Note: GET /api/orders now requires admin auth, so customers can't fetch
-        // Orders will be populated via socket events instead
-        setAllOrders([]);
-        setOrders([]);
+        // Fetch customer orders if customer info is available
+        if (customerName && customerPhone) {
+          try {
+            const customerOrders = await fetchCustomerOrders(customerName, customerPhone);
+            setOrders(customerOrders);
+            setAllOrders(customerOrders);
+          } catch (error) {
+            console.error('Failed to fetch customer orders:', error);
+            // Don't show error to user, just start with empty orders
+            // Orders will be populated via socket events
+            setOrders([]);
+            setAllOrders([]);
+          }
+        } else {
+          setOrders([]);
+          setAllOrders([]);
+        }
         
         setIsLoading(false);
       } catch (error) {
