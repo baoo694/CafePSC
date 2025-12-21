@@ -108,13 +108,13 @@ export default function AdminPage() {
     loadData();
   }, [isAuthenticated]);
 
-  // Socket event listeners
+  // Socket event listeners - chỉ setup khi đã authenticated
   useEffect(() => {
-    if (!socket) return;
+    if (!socket || !isAuthenticated) return;
 
     socket.emit('join:admin');
 
-    // New order notification
+    // New order notification - chỉ hiển thị khi admin đã đăng nhập
     socket.on('order:new', (order) => {
       setOrders(prev => [order, ...prev]);
       // Play notification sound
@@ -163,7 +163,7 @@ export default function AdminPage() {
       socket.off('order:deleted');
       socket.off('order:cancelled');
     };
-  }, [socket]);
+  }, [socket, isAuthenticated]); // Clean up và re-setup khi authentication thay đổi
 
   // Handle product toggle
   const handleToggleProduct = async (product) => {
