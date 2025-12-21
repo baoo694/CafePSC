@@ -275,6 +275,29 @@ app.post('/api/orders', async (req, res) => {
     if (phone) orderData.phone = phone.trim();
     if (student_id) orderData.student_id = student_id.trim();
     
+    // SECURITY FIX: Double-check product availability right before inserting order
+    // This prevents race condition where admin disables product between check and insert
+    const { data: productsRecheck, error: recheckError } = await supabase
+      .from('products')
+      .select('id, name, is_available')
+      .in('id', productIds);
+    
+    if (recheckError) throw recheckError;
+    
+    // Verify all products still exist
+    if (productsRecheck.length !== productIds.length) {
+      return res.status(400).json({ error: 'Một hoặc nhiều sản phẩm không tồn tại' });
+    }
+    
+    // Verify all products are still available
+    const unavailableRecheck = productsRecheck.filter(p => !p.is_available);
+    if (unavailableRecheck.length > 0) {
+      const productNames = unavailableRecheck.map(p => p.name).join(', ');
+      return res.status(400).json({ 
+        error: `Không thể đặt hàng. Các sản phẩm sau đã bị tắt trong lúc xử lý: ${productNames}` 
+      });
+    }
+    
     // Create order
     const { data: order, error: orderError } = await supabase
       .from('orders')
