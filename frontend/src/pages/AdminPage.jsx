@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSocket } from '../context/SocketContext';
-import { fetchProducts, fetchOrders, updateProductAvailability, updateOrderStatus, resetAllOrders, adminLogin, deleteOrder } from '../api';
+import { fetchProducts, fetchOrders, updateProductAvailability, updateOrderStatus, resetAllOrders, adminLogin, adminLogout, deleteOrder, checkAdminAuth } from '../api';
 import toast from 'react-hot-toast';
 import { 
   Coffee, ArrowLeft, RefreshCw, Wifi, WifiOff,
@@ -30,13 +30,19 @@ export default function AdminPage() {
   const [loginError, setLoginError] = useState('');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
-  // Check if already authenticated
+  // Check if already authenticated (kiểm tra cookie httpOnly)
   useEffect(() => {
-    const token = localStorage.getItem('adminToken');
-    if (token) {
-      setIsAuthenticated(true);
+    async function checkAuth() {
+      try {
+        const isAuth = await checkAdminAuth();
+        setIsAuthenticated(isAuth);
+      } catch {
+        setIsAuthenticated(false);
+      } finally {
+        setIsLoading(false);
+      }
     }
-    setIsLoading(false);
+    checkAuth();
   }, []);
 
   // Handle login
@@ -48,7 +54,7 @@ export default function AdminPage() {
     try {
       const response = await adminLogin(password);
       if (response.success) {
-        localStorage.setItem('adminToken', response.token);
+        // Token được lưu trong httpOnly cookie tự động
         setIsAuthenticated(true);
         setIsLoading(true); // Reload data after login
         toast.success('Đăng nhập thành công!');
@@ -61,11 +67,18 @@ export default function AdminPage() {
   };
 
   // Handle logout
-  const handleLogout = () => {
-    localStorage.removeItem('adminToken');
-    setIsAuthenticated(false);
-    setPassword('');
-    toast.success('Đã đăng xuất');
+  const handleLogout = async () => {
+    try {
+      await adminLogout();
+      setIsAuthenticated(false);
+      setPassword('');
+      toast.success('Đã đăng xuất');
+    } catch (error) {
+      // Vẫn logout ở frontend dù API call fail
+      setIsAuthenticated(false);
+      setPassword('');
+      toast.success('Đã đăng xuất');
+    }
   };
 
   // Fetch initial data when authenticated
@@ -152,7 +165,13 @@ export default function AdminPage() {
       await updateProductAvailability(product.id, !product.is_available);
       toast.success(`${product.name} ${!product.is_available ? 'đã bật' : 'đã tắt'}`);
     } catch (error) {
-      toast.error('Không thể cập nhật sản phẩm');
+      // If authentication error, redirect to login
+      if (error.message && (error.message.includes('Unauthorized') || error.message.includes('Authentication') || error.message.includes('login'))) {
+        setIsAuthenticated(false);
+        toast.error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+      } else {
+        toast.error(error.message || 'Không thể cập nhật sản phẩm');
+      }
     }
   };
 

@@ -7,6 +7,8 @@ const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
 const MAX_REQUESTS_PER_WINDOW = {
   '/api/orders': 10, // 10 orders per minute per IP
   '/api/admin/login': 5, // 5 login attempts per minute per IP
+  '/api/products': 30, // 30 requests per minute per IP (chống scraping)
+  '/api/orders/cancel': 5, // 5 cancel requests per minute per IP
   default: 30 // 30 requests per minute for other endpoints
 };
 

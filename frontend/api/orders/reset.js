@@ -1,10 +1,19 @@
 import { getAdminSupabaseClient } from '../lib/supabase.js';
 import { verifyAdminToken } from '../lib/auth.js';
+import { requireCSRF } from '../lib/csrf.js';
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  // CORS headers với credentials support
+  const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || ['*'];
+  const origin = req.headers.origin;
+  
+  if (allowedOrigins.includes('*') || (origin && allowedOrigins.includes(origin))) {
+    res.setHeader('Access-Control-Allow-Origin', origin || '*');
+  }
+  
   res.setHeader('Access-Control-Allow-Methods', 'DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-CSRF-Token');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
@@ -15,6 +24,12 @@ export default async function handler(req, res) {
     const authCheck = verifyAdminToken(req);
     if (!authCheck.valid) {
       return res.status(401).json({ error: 'Unauthorized: ' + authCheck.error });
+    }
+
+    // Verify CSRF protection
+    const csrfCheck = requireCSRF(req, allowedOrigins);
+    if (!csrfCheck.valid) {
+      return res.status(403).json({ error: 'CSRF validation failed: ' + csrfCheck.error });
     }
 
     try {

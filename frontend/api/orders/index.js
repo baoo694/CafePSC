@@ -13,7 +13,8 @@ export default async function handler(req, res) {
   }
   
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-CSRF-Token');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Max-Age', '86400'); // 24 hours
 
   if (req.method === 'OPTIONS') {
@@ -31,8 +32,26 @@ export default async function handler(req, res) {
     }
   }
 
-  // GET all orders
+  // GET all orders - Admin only (requires authentication)
   if (req.method === 'GET') {
+    // Import here to avoid circular dependency
+    const { verifyAdminToken } = await import('../lib/auth.js');
+    
+    // Verify admin authentication
+    const authCheck = verifyAdminToken(req);
+    if (!authCheck.valid) {
+      return res.status(401).json({ error: 'Unauthorized: ' + authCheck.error });
+    }
+
+    // Rate limiting for GET requests
+    const rateLimitCheck = rateLimit(req, '/api/orders');
+    if (!rateLimitCheck.allowed) {
+      res.setHeader('Retry-After', rateLimitCheck.retryAfter);
+      return res.status(429).json({ 
+        error: rateLimitCheck.error || 'Too many requests. Please try again later.' 
+      });
+    }
+
     try {
       const { data, error } = await supabase
         .from('orders')

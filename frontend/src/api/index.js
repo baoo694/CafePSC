@@ -5,6 +5,20 @@ const API_URL = import.meta.env.VITE_API_URL || (
     : '/api'  // Vercel serverless functions
 );
 
+// Helper function to get CSRF token from localStorage
+function getCSRFToken() {
+  return localStorage.getItem('csrfToken') || null;
+}
+
+// Helper function to set CSRF token
+function setCSRFToken(token) {
+  if (token) {
+    localStorage.setItem('csrfToken', token);
+  } else {
+    localStorage.removeItem('csrfToken');
+  }
+}
+
 // Products API
 export async function fetchProducts() {
   const response = await fetch(`${API_URL}/products`);
@@ -13,17 +27,19 @@ export async function fetchProducts() {
 }
 
 export async function updateProductAvailability(id, isAvailable) {
-  const token = localStorage.getItem('adminToken');
-  if (!token) {
-    throw new Error('Admin authentication required');
+  const csrfToken = getCSRFToken();
+  const headers = { 
+    'Content-Type': 'application/json'
+  };
+  
+  if (csrfToken) {
+    headers['X-CSRF-Token'] = csrfToken;
   }
   
   const response = await fetch(`${API_URL}/products/${id}/availability`, {
     method: 'PUT',
-    headers: { 
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
-    },
+    credentials: 'include', // Gửi cookies (httpOnly)
+    headers,
     body: JSON.stringify({ is_available: isAvailable }),
   });
   if (!response.ok) {
@@ -54,17 +70,19 @@ export async function createOrder(orderData) {
 }
 
 export async function updateOrderStatus(id, status) {
-  const token = localStorage.getItem('adminToken');
-  if (!token) {
-    throw new Error('Admin authentication required');
+  const csrfToken = getCSRFToken();
+  const headers = { 
+    'Content-Type': 'application/json'
+  };
+  
+  if (csrfToken) {
+    headers['X-CSRF-Token'] = csrfToken;
   }
   
   const response = await fetch(`${API_URL}/orders/${id}/status`, {
     method: 'PUT',
-    headers: { 
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
-    },
+    credentials: 'include', // Gửi cookies (httpOnly)
+    headers,
     body: JSON.stringify({ status }),
   });
   if (!response.ok) {
@@ -75,16 +93,17 @@ export async function updateOrderStatus(id, status) {
 }
 
 export async function resetAllOrders() {
-  const token = localStorage.getItem('adminToken');
-  if (!token) {
-    throw new Error('Admin authentication required');
+  const csrfToken = getCSRFToken();
+  const headers = {};
+  
+  if (csrfToken) {
+    headers['X-CSRF-Token'] = csrfToken;
   }
   
   const response = await fetch(`${API_URL}/orders/reset`, {
     method: 'DELETE',
-    headers: {
-      'Authorization': `Bearer ${token}`
-    }
+    credentials: 'include', // Gửi cookies (httpOnly)
+    headers
   });
   if (!response.ok) {
     const error = await response.json().catch(() => ({ error: 'Failed to reset orders' }));
@@ -93,9 +112,14 @@ export async function resetAllOrders() {
   return response.json();
 }
 
-export async function cancelOrder(id) {
+export async function cancelOrder(id, customerName, phone) {
   const response = await fetch(`${API_URL}/orders/${id}/cancel`, {
     method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      customer_name: customerName,
+      phone: phone
+    }),
   });
   if (!response.ok) {
     const error = await response.json();
@@ -105,16 +129,17 @@ export async function cancelOrder(id) {
 }
 
 export async function deleteOrder(id) {
-  const token = localStorage.getItem('adminToken');
-  if (!token) {
-    throw new Error('Admin authentication required');
+  const csrfToken = getCSRFToken();
+  const headers = {};
+  
+  if (csrfToken) {
+    headers['X-CSRF-Token'] = csrfToken;
   }
   
   const response = await fetch(`${API_URL}/orders/${id}`, {
     method: 'DELETE',
-    headers: {
-      'Authorization': `Bearer ${token}`
-    }
+    credentials: 'include', // Gửi cookies (httpOnly)
+    headers
   });
   if (!response.ok) {
     const error = await response.json().catch(() => ({ error: 'Failed to delete order' }));
@@ -127,6 +152,7 @@ export async function deleteOrder(id) {
 export async function adminLogin(password) {
   const response = await fetch(`${API_URL}/admin/login`, {
     method: 'POST',
+    credentials: 'include', // Gửi và nhận cookies
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ password }),
   });
@@ -134,6 +160,45 @@ export async function adminLogin(password) {
     const error = await response.json();
     throw new Error(error.error || 'Login failed');
   }
+  const data = await response.json();
+  
+  // Store CSRF token if provided
+  if (data.csrfToken) {
+    setCSRFToken(data.csrfToken);
+  }
+  
+  return data;
+}
+
+// Admin logout
+export async function adminLogout() {
+  // Clear CSRF token
+  setCSRFToken(null);
+  
+  const response = await fetch(`${API_URL}/admin/logout`, {
+    method: 'POST',
+    credentials: 'include' // Gửi cookies để xóa
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Logout failed');
+  }
   return response.json();
+}
+
+// Check admin authentication status
+export async function checkAdminAuth() {
+  // Sử dụng một endpoint admin đơn giản để kiểm tra auth
+  // Nếu có cookie hợp lệ, request sẽ thành công
+  try {
+    const response = await fetch(`${API_URL}/orders`, {
+      method: 'GET',
+      credentials: 'include'
+    });
+    // Nếu response ok hoặc 401, chúng ta biết được trạng thái auth
+    return response.status !== 401;
+  } catch {
+    return false;
+  }
 }
 

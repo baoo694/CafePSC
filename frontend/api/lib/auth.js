@@ -1,12 +1,28 @@
 // Helper function to verify admin token
+// Ưu tiên đọc từ httpOnly cookie (an toàn hơn), fallback về Authorization header (backward compatibility)
 export function verifyAdminToken(req) {
-  const authHeader = req.headers.authorization;
+  // Đọc token từ cookie (ưu tiên)
+  let token = null;
+  const cookies = req.headers.cookie;
   
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return { valid: false, error: 'Missing or invalid authorization header' };
+  if (cookies) {
+    const cookieMatch = cookies.match(/adminToken=([^;]+)/);
+    if (cookieMatch) {
+      token = cookieMatch[1];
+    }
   }
   
-  const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+  // Fallback: đọc từ Authorization header (backward compatibility)
+  if (!token) {
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.substring(7); // Remove 'Bearer ' prefix
+    }
+  }
+  
+  if (!token) {
+    return { valid: false, error: 'Missing authentication token' };
+  }
   
   try {
     // Decode the token (it's base64 encoded)

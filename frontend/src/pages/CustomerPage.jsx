@@ -52,20 +52,17 @@ export default function CustomerPage() {
   useEffect(() => {
     async function loadData() {
       try {
-        const [productsData, ordersData] = await Promise.all([
-          fetchProducts(),
-          fetchOrders(),
-        ]);
+        const productsData = await fetchProducts();
         setProducts(productsData);
-        setAllOrders(ordersData);
-        // Filter orders by customer name AND phone to ensure uniqueness
-        if (customerName && customerPhone) {
-          setOrders(ordersData.filter(o => 
-            o.customer_name === customerName && o.phone === customerPhone
-          ));
-        } else {
-          setOrders([]);
-        }
+        
+        // Customer doesn't need to fetch all orders from API
+        // Orders will be received via Socket.IO or Supabase Realtime
+        // Only fetch if customer info is available (for initial load)
+        // Note: GET /api/orders now requires admin auth, so customers can't fetch
+        // Orders will be populated via socket events instead
+        setAllOrders([]);
+        setOrders([]);
+        
         setIsLoading(false);
       } catch (error) {
         toast.error('Không thể tải dữ liệu');
@@ -450,7 +447,9 @@ export default function CustomerPage() {
   // Cancel order
   const handleCancelOrder = async (orderId) => {
     try {
-      await cancelOrder(orderId);
+      // Send customer info to verify ownership
+      await cancelOrder(orderId, customerName, customerPhone);
+      toast.success('Đã hủy đơn hàng');
     } catch (error) {
       toast.error(error.message || 'Không thể hủy đơn hàng');
     }

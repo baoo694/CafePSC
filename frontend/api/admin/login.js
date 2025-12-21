@@ -1,4 +1,5 @@
 import { rateLimit } from '../lib/rateLimit.js';
+import { generateCSRFToken } from '../lib/csrf.js';
 
 export default async function handler(req, res) {
   // CORS headers
@@ -10,7 +11,8 @@ export default async function handler(req, res) {
   }
   
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-CSRF-Token');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Max-Age', '86400'); // 24 hours
 
   if (req.method === 'OPTIONS') {
@@ -29,7 +31,16 @@ export default async function handler(req, res) {
     }
 
     const { password } = req.body;
-    const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
+    const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+    
+    // Check if ADMIN_PASSWORD is configured
+    if (!ADMIN_PASSWORD) {
+      console.error('ADMIN_PASSWORD environment variable is not set');
+      return res.status(500).json({ 
+        success: false, 
+        error: 'Server configuration error' 
+      });
+    }
     
     // Validate password input
     if (!password || typeof password !== 'string') {
@@ -38,7 +49,34 @@ export default async function handler(req, res) {
 
     if (password === ADMIN_PASSWORD) {
       const token = Buffer.from(`admin:${Date.now()}`).toString('base64');
-      return res.status(200).json({ success: true, token });
+      
+      // Generate CSRF token
+      const csrfToken = generateCSRFToken(token);
+      
+      // Set httpOnly cookie để bảo vệ khỏi XSS
+      const maxAge = 24 * 60 * 60; // 24 hours in seconds
+      const isProduction = process.env.NODE_ENV === 'production';
+      
+      // Set cookie với Secure flag trong production, không có Secure trong development
+      const cookieOptions = [
+        `adminToken=${token}`,
+        'HttpOnly',
+        'SameSite=Strict',
+        `Max-Age=${maxAge}`,
+        'Path=/'
+      ];
+      
+      if (isProduction) {
+        cookieOptions.push('Secure');
+      }
+      
+      res.setHeader('Set-Cookie', cookieOptions.join('; '));
+      
+      // Return CSRF token in response (client will store and send in subsequent requests)
+      return res.status(200).json({ 
+        success: true,
+        csrfToken: csrfToken 
+      });
     } else {
       return res.status(401).json({ success: false, error: 'Mật khẩu không đúng' });
     }
