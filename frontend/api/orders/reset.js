@@ -29,7 +29,18 @@ export default async function handler(req, res) {
     // Verify CSRF protection
     const csrfCheck = requireCSRF(req, allowedOrigins);
     if (!csrfCheck.valid) {
-      return res.status(403).json({ error: 'CSRF validation failed: ' + csrfCheck.error });
+      // Log for debugging
+      console.error('CSRF check failed:', {
+        error: csrfCheck.error,
+        hasOrigin: !!req.headers.origin,
+        hasCSRFToken: !!req.headers['x-csrf-token'],
+        hasCookie: !!req.headers.cookie,
+        allowedOrigins
+      });
+      return res.status(403).json({ 
+        error: 'CSRF validation failed: ' + csrfCheck.error,
+        hint: 'Please try logging in again to get a new CSRF token'
+      });
     }
 
     try {
