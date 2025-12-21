@@ -1,4 +1,4 @@
-import { getSupabaseClient } from '../../../lib/supabase.js';
+import { getSupabaseClient, getAdminSupabaseClient } from '../../../lib/supabase.js';
 import { rateLimit } from '../../../lib/rateLimit.js';
 
 export default async function handler(req, res) {
@@ -109,7 +109,9 @@ export default async function handler(req, res) {
         return res.status(403).json({ error: 'Không có quyền hủy đơn hàng này' });
       }
 
-      const { data, error } = await supabase
+      // Use admin client to update (bypasses RLS)
+      const adminSupabase = getAdminSupabaseClient();
+      const { data, error } = await adminSupabase
         .from('orders')
         .update({ status: 'cancelled' })
         .eq('id', orderId)
