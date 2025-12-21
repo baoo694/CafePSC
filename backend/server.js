@@ -272,17 +272,85 @@ function detectSpamPattern(customerName, phone, deliveryAddress) {
   return { isSpam: false };
 }
 
+// Spam tracking for backend
+const spamAttempts = new Map();
+const bannedIPs = new Map();
+const BAN_DURATION = 5 * 60 * 1000; // 5 minutes
+const SPAM_THRESHOLD = 5; // Ban after 5 spam attempts
+
+function isIPBanned(ip) {
+  const banData = bannedIPs.get(ip);
+  if (!banData) return false;
+  
+  const now = Date.now();
+  if (now - banData.bannedAt > BAN_DURATION) {
+    bannedIPs.delete(ip);
+    spamAttempts.delete(ip);
+    return false;
+  }
+  return true;
+}
+
+function recordSpamAttempt(ip) {
+  const now = Date.now();
+  const attempts = spamAttempts.get(ip) || { count: 0, firstAttempt: now };
+  
+  attempts.count++;
+  attempts.lastAttempt = now;
+  
+  if (now - attempts.firstAttempt > 60 * 1000) {
+    attempts.count = 1;
+    attempts.firstAttempt = now;
+  }
+  
+  spamAttempts.set(ip, attempts);
+  
+  if (attempts.count >= SPAM_THRESHOLD) {
+    bannedIPs.set(ip, { bannedAt: now });
+    console.warn(`IP ${ip} banned for ${BAN_DURATION / 1000}s due to ${attempts.count} spam attempts`);
+    return true;
+  }
+  return false;
+}
+
 // Create new order
 app.post('/api/orders', async (req, res) => {
   try {
+    // Get IP early
+    const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 
+               req.headers['x-real-ip'] || 
+               req.connection?.remoteAddress || 
+               'unknown';
+    
+    // Check if IP is banned
+    if (isIPBanned(ip)) {
+      return res.status(403).json({ 
+        error: 'IP của bạn đã bị tạm thời chặn do spam. Vui lòng thử lại sau 5 phút.' 
+      });
+    }
+    
     const { customer_name, phone, student_id, note, items, delivery_address } = req.body;
     
-    // SPAM DETECTION: Phát hiện pattern spam (khach1, khach2, khach3...)
+    // EARLY SPAM DETECTION: Phát hiện spam ngay, không xử lý logic phức tạp
     const spamCheck = detectSpamPattern(customer_name, phone, delivery_address);
     if (spamCheck.isSpam) {
-      console.warn('Spam detected:', { customer_name, phone, delivery_address, reason: spamCheck.reason });
-      return res.status(400).json({ 
-        error: 'Đơn hàng không hợp lệ. Vui lòng sử dụng thông tin thật của bạn.' 
+      // Record spam attempt and ban if threshold reached
+      const isBanned = recordSpamAttempt(ip);
+      
+      console.warn('Spam detected:', { 
+        ip,
+        customer_name, 
+        phone, 
+        delivery_address, 
+        reason: spamCheck.reason,
+        banned: isBanned
+      });
+      
+      // Return immediately - no further processing
+      return res.status(isBanned ? 403 : 400).json({ 
+        error: isBanned 
+          ? 'IP của bạn đã bị tạm thời chặn do spam. Vui lòng thử lại sau 5 phút.'
+          : 'Đơn hàng không hợp lệ. Vui lòng sử dụng thông tin thật của bạn.' 
       });
     }
     

@@ -4,7 +4,11 @@
 
 const requestCounts = new Map();
 const customerRequestCounts = new Map(); // For customer-based rate limiting
+const spamAttempts = new Map(); // Track spam attempts per IP
+const bannedIPs = new Map(); // Temporarily banned IPs
 const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
+const BAN_DURATION = 5 * 60 * 1000; // 5 minutes ban
+const SPAM_THRESHOLD = 5; // Ban after 5 spam attempts
 const MAX_REQUESTS_PER_WINDOW = {
   '/api/orders': 50, // 50 orders per minute per IP (backup limit - cao hơn cho mạng chung)
   '/api/admin/login': 5, // 5 login attempts per minute per IP
@@ -27,12 +31,67 @@ setInterval(() => {
   }
 }, 5 * 60 * 1000);
 
+/**
+ * Check if IP is banned
+ */
+export function isIPBanned(ip) {
+  const banData = bannedIPs.get(ip);
+  if (!banData) return false;
+  
+  const now = Date.now();
+  if (now - banData.bannedAt > BAN_DURATION) {
+    bannedIPs.delete(ip);
+    spamAttempts.delete(ip);
+    return false;
+  }
+  
+  return true;
+}
+
+/**
+ * Record spam attempt and ban if threshold reached
+ */
+export function recordSpamAttempt(ip) {
+  const now = Date.now();
+  const attempts = spamAttempts.get(ip) || { count: 0, firstAttempt: now };
+  
+  attempts.count++;
+  attempts.lastAttempt = now;
+  
+  // Reset if window passed
+  if (now - attempts.firstAttempt > RATE_LIMIT_WINDOW) {
+    attempts.count = 1;
+    attempts.firstAttempt = now;
+  }
+  
+  spamAttempts.set(ip, attempts);
+  
+  // Ban if threshold reached
+  if (attempts.count >= SPAM_THRESHOLD) {
+    bannedIPs.set(ip, { bannedAt: now });
+    console.warn(`IP ${ip} banned for ${BAN_DURATION / 1000}s due to ${attempts.count} spam attempts`);
+    return true;
+  }
+  
+  return false;
+}
+
 export function rateLimit(req, endpoint = 'default') {
   // Get client IP
   const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 
              req.headers['x-real-ip'] || 
              req.connection?.remoteAddress || 
              'unknown';
+  
+  // Check if IP is banned
+  if (isIPBanned(ip)) {
+    return {
+      allowed: false,
+      error: 'IP của bạn đã bị tạm thời chặn do spam. Vui lòng thử lại sau 5 phút.',
+      retryAfter: BAN_DURATION / 1000,
+      banned: true
+    };
+  }
   
   const key = `${ip}:${endpoint}`;
   const now = Date.now();

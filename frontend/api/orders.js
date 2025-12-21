@@ -1,6 +1,6 @@
 import { getSupabaseClient } from '../lib/supabase.js';
 import { verifyAdminToken } from '../lib/auth.js';
-import { rateLimit, customerRateLimit } from '../lib/rateLimit.js';
+import { rateLimit, customerRateLimit, isIPBanned, recordSpamAttempt } from '../lib/rateLimit.js';
 import { detectSpamOrder } from '../lib/spamDetection.js';
 
 // Helper function để set CORS headers
@@ -72,25 +72,51 @@ export default async function handler(req, res) {
     if (req.method === 'POST') {
       setCORSHeaders(res, req, 'POST, OPTIONS');
       
-      // Validate customer info first (needed for customer-based rate limiting)
-      const { customer_name, phone, delivery_address, note, items } = req.body || {};
+      // EARLY RATE LIMITING: Chặn ngay từ đầu để tránh DDoS
+      // IP-based rate limiting (check trước để tránh xử lý logic phức tạp)
+      const ipRateLimitCheck = rateLimit(req, '/api/orders');
+      if (!ipRateLimitCheck.allowed) {
+        res.setHeader('Retry-After', ipRateLimitCheck.retryAfter);
+        return res.status(ipRateLimitCheck.banned ? 403 : 429).json({ 
+          error: ipRateLimitCheck.error || 'Quá nhiều yêu cầu từ mạng này. Vui lòng thử lại sau.' 
+        });
+      }
       
-      // SPAM DETECTION: Phát hiện pattern spam (khach1, khach2, khach3...)
+      // Parse body (minimal - chỉ lấy thông tin cần thiết cho spam check)
+      const { customer_name, phone, delivery_address } = req.body || {};
+      
+      // EARLY SPAM DETECTION: Phát hiện spam ngay, không xử lý logic phức tạp
       const spamCheck = detectSpamOrder({ customer_name, phone, delivery_address });
       if (spamCheck.isSpam) {
+        // Get IP for spam tracking
+        const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 
+                   req.headers['x-real-ip'] || 
+                   req.connection?.remoteAddress || 
+                   'unknown';
+        
+        // Record spam attempt and ban if threshold reached
+        const isBanned = recordSpamAttempt(ip);
+        
         console.warn('Spam detected:', {
+          ip,
           customer_name,
           phone,
           delivery_address,
           reason: spamCheck.reason,
-          pattern: spamCheck.pattern
+          pattern: spamCheck.pattern,
+          banned: isBanned
         });
-        return res.status(400).json({ 
-          error: 'Đơn hàng không hợp lệ. Vui lòng sử dụng thông tin thật của bạn.' 
+        
+        // Return immediately - no further processing
+        return res.status(isBanned ? 403 : 400).json({ 
+          error: isBanned 
+            ? 'IP của bạn đã bị tạm thời chặn do spam. Vui lòng thử lại sau 5 phút.'
+            : 'Đơn hàng không hợp lệ. Vui lòng sử dụng thông tin thật của bạn.' 
         });
       }
       
-      // Customer-based rate limiting (ưu tiên cho môi trường trường học)
+      // Customer-based rate limiting (sau khi đã pass spam check)
+      const { note, items } = req.body || {};
       if (customer_name && phone) {
         const customerRateLimitCheck = customerRateLimit(customer_name, phone);
         if (!customerRateLimitCheck.allowed) {
@@ -99,17 +125,6 @@ export default async function handler(req, res) {
             error: customerRateLimitCheck.error || 'Bạn đã đặt quá nhiều đơn hàng. Vui lòng đợi một chút.' 
           });
         }
-      }
-      
-      // IP-based rate limiting (backup - với limit cao hơn cho mạng chung)
-      // Tăng limit lên 50 để không ảnh hưởng khi nhiều người dùng chung IP
-      const ipRateLimitCheck = rateLimit(req, '/api/orders');
-      if (!ipRateLimitCheck.allowed) {
-        // Chỉ chặn nếu vượt quá 50 requests/phút (cho toàn bộ mạng)
-        res.setHeader('Retry-After', ipRateLimitCheck.retryAfter);
-        return res.status(429).json({ 
-          error: 'Quá nhiều yêu cầu từ mạng này. Vui lòng thử lại sau.' 
-        });
       }
 
       try {
