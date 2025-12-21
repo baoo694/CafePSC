@@ -2,20 +2,28 @@ import crypto from 'crypto';
 
 // CSRF token secret (MUST be set in environment variable)
 const CSRF_SECRET = process.env.CSRF_SECRET;
-if (!CSRF_SECRET) {
-  // In production, this should never happen - throw error
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error('CSRF_SECRET environment variable is required in production');
-  }
-  // In development, use a warning but allow (for local testing)
-  console.warn('⚠️ WARNING: CSRF_SECRET not set. Using default (INSECURE for production).');
-}
-
 const CSRF_TOKEN_EXPIRY = 24 * 60 * 60 * 1000; // 24 hours
 
 // Fallback for development only (should never be used in production)
 const DEFAULT_CSRF_SECRET = 'default-csrf-secret-change-in-production';
-const effectiveSecret = CSRF_SECRET || DEFAULT_CSRF_SECRET;
+
+/**
+ * Get effective CSRF secret, with validation
+ * @returns {string} CSRF secret
+ * @throws {Error} If CSRF_SECRET is not set in production
+ */
+function getEffectiveSecret() {
+  if (!CSRF_SECRET) {
+    // In production, this should never happen - throw error
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('CSRF_SECRET environment variable is required in production');
+    }
+    // In development, use a warning but allow (for local testing)
+    console.warn('⚠️ WARNING: CSRF_SECRET not set. Using default (INSECURE for production).');
+    return DEFAULT_CSRF_SECRET;
+  }
+  return CSRF_SECRET;
+}
 
 /**
  * Generate a new CSRF token (signed with HMAC, no storage needed)
@@ -23,9 +31,10 @@ const effectiveSecret = CSRF_SECRET || DEFAULT_CSRF_SECRET;
  * @returns {string} CSRF token
  */
 export function generateCSRFToken(sessionId) {
+  const secret = getEffectiveSecret();
   const timestamp = Date.now();
   const data = `${sessionId}:${timestamp}`;
-  const hmac = crypto.createHmac('sha256', effectiveSecret);
+  const hmac = crypto.createHmac('sha256', secret);
   hmac.update(data);
   const signature = hmac.digest('hex');
   // Return token as base64 encoded: data.signature
@@ -54,7 +63,8 @@ export function verifyCSRFToken(token, sessionId) {
     }
 
     // Verify signature
-    const hmac = crypto.createHmac('sha256', effectiveSecret);
+    const secret = getEffectiveSecret();
+    const hmac = crypto.createHmac('sha256', secret);
     hmac.update(data);
     const expectedSignature = hmac.digest('hex');
     

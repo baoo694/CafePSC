@@ -48,35 +48,43 @@ export default async function handler(req, res) {
     }
 
     if (password === ADMIN_PASSWORD) {
-      const token = Buffer.from(`admin:${Date.now()}`).toString('base64');
-      
-      // Generate CSRF token
-      const csrfToken = generateCSRFToken(token);
-      
-      // Set httpOnly cookie để bảo vệ khỏi XSS
-      const maxAge = 24 * 60 * 60; // 24 hours in seconds
-      const isProduction = process.env.NODE_ENV === 'production';
-      
-      // Set cookie với Secure flag trong production, không có Secure trong development
-      const cookieOptions = [
-        `adminToken=${token}`,
-        'HttpOnly',
-        'SameSite=Strict',
-        `Max-Age=${maxAge}`,
-        'Path=/'
-      ];
-      
-      if (isProduction) {
-        cookieOptions.push('Secure');
+      try {
+        const token = Buffer.from(`admin:${Date.now()}`).toString('base64');
+        
+        // Generate CSRF token
+        const csrfToken = generateCSRFToken(token);
+        
+        // Set httpOnly cookie để bảo vệ khỏi XSS
+        const maxAge = 24 * 60 * 60; // 24 hours in seconds
+        const isProduction = process.env.NODE_ENV === 'production';
+        
+        // Set cookie với Secure flag trong production, không có Secure trong development
+        const cookieOptions = [
+          `adminToken=${token}`,
+          'HttpOnly',
+          'SameSite=Strict',
+          `Max-Age=${maxAge}`,
+          'Path=/'
+        ];
+        
+        if (isProduction) {
+          cookieOptions.push('Secure');
+        }
+        
+        res.setHeader('Set-Cookie', cookieOptions.join('; '));
+        
+        // Return CSRF token in response (client will store and send in subsequent requests)
+        return res.status(200).json({ 
+          success: true,
+          csrfToken: csrfToken 
+        });
+      } catch (error) {
+        console.error('Error generating CSRF token:', error);
+        return res.status(500).json({ 
+          success: false, 
+          error: 'Server configuration error: ' + (error.message || 'CSRF_SECRET not configured') 
+        });
       }
-      
-      res.setHeader('Set-Cookie', cookieOptions.join('; '));
-      
-      // Return CSRF token in response (client will store and send in subsequent requests)
-      return res.status(200).json({ 
-        success: true,
-        csrfToken: csrfToken 
-      });
     } else {
       return res.status(401).json({ success: false, error: 'Mật khẩu không đúng' });
     }
