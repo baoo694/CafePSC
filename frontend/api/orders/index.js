@@ -1,8 +1,6 @@
 import { getSupabaseClient } from '../../lib/supabase.js';
 import { rateLimit } from '../../lib/rateLimit.js';
 
-const supabase = getSupabaseClient();
-
 export default async function handler(req, res) {
   // CORS headers
   const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || ['*'];
@@ -35,7 +33,7 @@ export default async function handler(req, res) {
   // GET all orders - Admin only (requires authentication)
   if (req.method === 'GET') {
     // Import here to avoid circular dependency
-    const { verifyAdminToken } = await import('../lib/auth.js');
+    const { verifyAdminToken } = await import('../../lib/auth.js');
     
     // Verify admin authentication
     const authCheck = verifyAdminToken(req);
@@ -53,6 +51,7 @@ export default async function handler(req, res) {
     }
 
     try {
+      const supabase = getSupabaseClient();
       const { data, error } = await supabase
         .from('orders')
         .select(`
@@ -138,6 +137,7 @@ export default async function handler(req, res) {
       }
 
       // Check if all products are available
+      const supabase = getSupabaseClient();
       const productIds = items.map(item => parseInt(item.product_id));
       const { data: products, error: productsError } = await supabase
         .from('products')
