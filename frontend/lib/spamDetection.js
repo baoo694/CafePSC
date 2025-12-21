@@ -75,28 +75,69 @@ export function detectSpamPhone(phone) {
     return { isSpam: false };
   }
   
-  const phoneClean = phone.replace(/\s/g, '');
+  const phoneClean = phone.replace(/[\s\-\(\)\.]/g, ''); // Remove spaces, dashes, parentheses, dots
+  
+  // Validate Vietnamese phone format: 10 digits starting with 0
+  // Hoặc 11 digits với +84
+  if (phoneClean.length < 10 || phoneClean.length > 11) {
+    return { isSpam: false }; // Let validation handle invalid length
+  }
+  
+  // Remove +84 prefix if present
+  let phoneNumber = phoneClean;
+  if (phoneClean.startsWith('+84')) {
+    phoneNumber = '0' + phoneClean.slice(3);
+  }
+  
+  // Must start with 0 and be 10 digits
+  if (!phoneNumber.match(/^0\d{9}$/)) {
+    return { isSpam: false }; // Let validation handle
+  }
   
   // Check sequential phone pattern (0900000001, 0900000002...)
-  // Pattern: số bắt đầu bằng 0, có 9-10 chữ số, và kết thúc bằng số nhỏ (< 100)
-  if (phoneClean.length >= 10 && phoneClean.length <= 11) {
-    // Check if last 2-3 digits are sequential (01, 02, 03... or 001, 002...)
-    const lastDigits = phoneClean.slice(-3);
-    const lastDigit = parseInt(lastDigits);
-    
-    // Nếu số cuối nhỏ hơn 1000 và phone có pattern giống nhau
-    if (lastDigit < 1000 && lastDigit > 0) {
-      const prefix = phoneClean.slice(0, -lastDigits.length);
-      // Check if prefix is mostly same digits (like 090000000)
-      const uniqueDigits = new Set(prefix.split(''));
-      if (uniqueDigits.size <= 2) {
-        return {
-          isSpam: true,
-          reason: 'Số điện thoại có pattern spam (tăng dần)',
-          pattern: 'sequential_phone'
-        };
-      }
+  // Pattern 1: Số cuối tăng dần (01, 02, 03... đến 100000)
+  const lastDigits = phoneNumber.slice(-3);
+  const lastDigit = parseInt(lastDigits);
+  
+  if (lastDigit >= 1 && lastDigit <= 100000) {
+    const prefix = phoneNumber.slice(0, -lastDigits.length);
+    // Check if prefix is mostly same digits (like 090000000, 091111111)
+    const uniqueDigits = new Set(prefix.split(''));
+    if (uniqueDigits.size <= 2) {
+      return {
+        isSpam: true,
+        reason: `Số điện thoại có pattern spam (tăng dần: ${phoneNumber})`,
+        pattern: 'sequential_phone',
+        detectedNumber: lastDigit
+      };
     }
+  }
+  
+  // Pattern 2: Số có nhiều chữ số giống nhau (0900000000, 0911111111)
+  const digitCounts = {};
+  for (const digit of phoneNumber) {
+    digitCounts[digit] = (digitCounts[digit] || 0) + 1;
+  }
+  const maxCount = Math.max(...Object.values(digitCounts));
+  // Nếu một chữ số xuất hiện >= 7 lần (trong 10 chữ số) → có thể là spam
+  if (maxCount >= 7) {
+    return {
+      isSpam: true,
+      reason: 'Số điện thoại có nhiều chữ số giống nhau (có thể là giả)',
+      pattern: 'repeated_digits_phone'
+    };
+  }
+  
+  // Pattern 3: Số điện thoại có pattern lặp lại (0909090909, 0123456789)
+  if (phoneNumber.match(/^0(\d)\1{8}$/) || // 0111111111
+      phoneNumber.match(/^0(\d{2})\1{4}$/) || // 0120120120
+      phoneNumber === '0123456789' || // Sequential
+      phoneNumber === '0987654321') { // Reverse sequential
+    return {
+      isSpam: true,
+      reason: 'Số điện thoại có pattern không hợp lệ',
+      pattern: 'invalid_pattern_phone'
+    };
   }
   
   return { isSpam: false };
@@ -112,12 +153,51 @@ export function detectSpamAddress(address) {
   
   const addr = address.trim().toLowerCase();
   
-  // Check sequential address pattern
-  if (SPAM_PATTERNS.sequentialAddress.test(addr)) {
+  // Pattern 1: Sequential address (A1, A2, address1, address2...)
+  const sequentialMatch = addr.match(/^(A|address|diachi|add|test|demo|spam)\s*(\d+)$/i);
+  if (sequentialMatch) {
+    const number = parseInt(sequentialMatch[2]);
+    // Chặn nếu số từ 1 đến 100000
+    if (number >= 1 && number <= 100000) {
+      return {
+        isSpam: true,
+        reason: `Địa chỉ có pattern spam (tăng dần: ${address})`,
+        pattern: 'sequential_address',
+        detectedNumber: number
+      };
+    }
+  }
+  
+  // Pattern 2: Địa chỉ quá ngắn và chỉ có số (A1, B2, C3...)
+  if (addr.length <= 3 && /^[a-z]\d+$/i.test(addr)) {
+    const number = parseInt(addr.match(/\d+/)?.[0] || '0');
+    if (number >= 1 && number <= 100000) {
+      return {
+        isSpam: true,
+        reason: 'Địa chỉ quá ngắn và có pattern spam',
+        pattern: 'short_sequential_address'
+      };
+    }
+  }
+  
+  // Pattern 3: Địa chỉ chỉ có từ spam + số
+  const spamWords = ['test', 'demo', 'spam', 'fake', 'hack', 'bot'];
+  for (const word of spamWords) {
+    if (addr.includes(word) && /\d+/.test(addr)) {
+      return {
+        isSpam: true,
+        reason: 'Địa chỉ có từ khóa spam',
+        pattern: 'spam_keyword_address'
+      };
+    }
+  }
+  
+  // Pattern 4: Địa chỉ quá ngắn (< 5 ký tự) và có số
+  if (addr.length < 5 && /\d+/.test(addr)) {
     return {
       isSpam: true,
-      reason: 'Địa chỉ có pattern spam (tăng dần)',
-      pattern: 'sequential_address'
+      reason: 'Địa chỉ quá ngắn và có dấu hiệu spam',
+      pattern: 'too_short_address'
     };
   }
   

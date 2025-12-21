@@ -201,17 +201,43 @@ function detectSpamPattern(customerName, phone, deliveryAddress) {
   
   // Check phone pattern: 0900000001, 0900000002...
   if (phone) {
-    const phoneClean = phone.replace(/\s/g, '');
-    if (phoneClean.length >= 10) {
-      const lastDigits = phoneClean.slice(-3);
+    const phoneClean = phone.replace(/[\s\-\(\)\.]/g, '');
+    
+    // Remove +84 prefix if present
+    let phoneNumber = phoneClean;
+    if (phoneClean.startsWith('+84')) {
+      phoneNumber = '0' + phoneClean.slice(3);
+    }
+    
+    // Must be 10 digits starting with 0
+    if (phoneNumber.match(/^0\d{9}$/)) {
+      // Pattern 1: Số cuối tăng dần (01-100000)
+      const lastDigits = phoneNumber.slice(-3);
       const lastDigit = parseInt(lastDigits);
-      // Nếu số cuối nhỏ và prefix giống nhau (090000000...)
-      if (lastDigit < 1000 && lastDigit > 0) {
-        const prefix = phoneClean.slice(0, -lastDigits.length);
+      
+      if (lastDigit >= 1 && lastDigit <= 100000) {
+        const prefix = phoneNumber.slice(0, -lastDigits.length);
         const uniqueDigits = new Set(prefix.split(''));
         if (uniqueDigits.size <= 2) {
-          return { isSpam: true, reason: 'Số điện thoại có pattern spam (tăng dần)' };
+          return { isSpam: true, reason: `Số điện thoại có pattern spam (tăng dần: ${phoneNumber})` };
         }
+      }
+      
+      // Pattern 2: Nhiều chữ số giống nhau (0900000000)
+      const digitCounts = {};
+      for (const digit of phoneNumber) {
+        digitCounts[digit] = (digitCounts[digit] || 0) + 1;
+      }
+      const maxCount = Math.max(...Object.values(digitCounts));
+      if (maxCount >= 7) {
+        return { isSpam: true, reason: 'Số điện thoại có nhiều chữ số giống nhau (có thể là giả)' };
+      }
+      
+      // Pattern 3: Pattern không hợp lệ
+      if (phoneNumber.match(/^0(\d)\1{8}$/) || 
+          phoneNumber === '0123456789' || 
+          phoneNumber === '0987654321') {
+        return { isSpam: true, reason: 'Số điện thoại có pattern không hợp lệ' };
       }
     }
   }
@@ -219,9 +245,27 @@ function detectSpamPattern(customerName, phone, deliveryAddress) {
   // Check address pattern: A1, A2, address1...
   if (deliveryAddress) {
     const addr = deliveryAddress.trim().toLowerCase();
-    const spamAddrPattern = /^(A|address|diachi|add)\d+$/i;
-    if (spamAddrPattern.test(addr)) {
-      return { isSpam: true, reason: 'Địa chỉ có pattern spam (tăng dần)' };
+    
+    // Pattern 1: Sequential (A1, address1...)
+    const sequentialMatch = addr.match(/^(A|address|diachi|add|test|demo|spam)\s*(\d+)$/i);
+    if (sequentialMatch) {
+      const number = parseInt(sequentialMatch[2]);
+      if (number >= 1 && number <= 100000) {
+        return { isSpam: true, reason: `Địa chỉ có pattern spam (tăng dần: ${deliveryAddress})` };
+      }
+    }
+    
+    // Pattern 2: Quá ngắn và có số
+    if (addr.length < 5 && /\d+/.test(addr)) {
+      return { isSpam: true, reason: 'Địa chỉ quá ngắn và có dấu hiệu spam' };
+    }
+    
+    // Pattern 3: Có từ spam
+    const spamWords = ['test', 'demo', 'spam', 'fake', 'hack', 'bot'];
+    for (const word of spamWords) {
+      if (addr.includes(word) && /\d+/.test(addr)) {
+        return { isSpam: true, reason: 'Địa chỉ có từ khóa spam' };
+      }
     }
   }
   
