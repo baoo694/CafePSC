@@ -14,7 +14,8 @@ const MAX_REQUESTS_PER_WINDOW = {
 };
 
 // Customer-based rate limits (for school network environments)
-const MAX_ORDERS_PER_CUSTOMER = 10; // 10 orders per minute per customer
+// Giảm xuống 5 để chống spam tốt hơn (với 10000 sinh viên)
+const MAX_ORDERS_PER_CUSTOMER = 5; // 5 orders per minute per customer
 
 // Clean up old entries every 5 minutes
 setInterval(() => {

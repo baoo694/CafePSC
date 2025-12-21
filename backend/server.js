@@ -177,10 +177,65 @@ app.get('/api/orders', async (req, res) => {
   }
 });
 
+// Spam detection helper
+function detectSpamPattern(customerName, phone, deliveryAddress) {
+  if (!customerName) return { isSpam: false };
+  
+  const name = customerName.trim().toLowerCase();
+  
+  // Pattern: khach1, khach2, test1, user1, customer1...
+  const spamNamePattern = /^(khach|test|user|customer|guest|demo|spam|hack)\d+$/i;
+  if (spamNamePattern.test(name)) {
+    return { isSpam: true, reason: 'Tên khách hàng có pattern spam (tăng dần)' };
+  }
+  
+  // Pattern: tên quá ngắn + số (ví dụ: a1, b2)
+  if (name.length < 5 && /^\w+\d+$/.test(name)) {
+    return { isSpam: true, reason: 'Tên khách hàng có dấu hiệu spam' };
+  }
+  
+  // Check phone pattern: 0900000001, 0900000002...
+  if (phone) {
+    const phoneClean = phone.replace(/\s/g, '');
+    if (phoneClean.length >= 10) {
+      const lastDigits = phoneClean.slice(-3);
+      const lastDigit = parseInt(lastDigits);
+      // Nếu số cuối nhỏ và prefix giống nhau (090000000...)
+      if (lastDigit < 1000 && lastDigit > 0) {
+        const prefix = phoneClean.slice(0, -lastDigits.length);
+        const uniqueDigits = new Set(prefix.split(''));
+        if (uniqueDigits.size <= 2) {
+          return { isSpam: true, reason: 'Số điện thoại có pattern spam (tăng dần)' };
+        }
+      }
+    }
+  }
+  
+  // Check address pattern: A1, A2, address1...
+  if (deliveryAddress) {
+    const addr = deliveryAddress.trim().toLowerCase();
+    const spamAddrPattern = /^(A|address|diachi|add)\d+$/i;
+    if (spamAddrPattern.test(addr)) {
+      return { isSpam: true, reason: 'Địa chỉ có pattern spam (tăng dần)' };
+    }
+  }
+  
+  return { isSpam: false };
+}
+
 // Create new order
 app.post('/api/orders', async (req, res) => {
   try {
-    const { customer_name, phone, student_id, note, items } = req.body;
+    const { customer_name, phone, student_id, note, items, delivery_address } = req.body;
+    
+    // SPAM DETECTION: Phát hiện pattern spam (khach1, khach2, khach3...)
+    const spamCheck = detectSpamPattern(customer_name, phone, delivery_address);
+    if (spamCheck.isSpam) {
+      console.warn('Spam detected:', { customer_name, phone, delivery_address, reason: spamCheck.reason });
+      return res.status(400).json({ 
+        error: 'Đơn hàng không hợp lệ. Vui lòng sử dụng thông tin thật của bạn.' 
+      });
+    }
     
     // Validate customer_name
     if (!customer_name || typeof customer_name !== 'string') {
@@ -193,6 +248,12 @@ app.post('/api/orders', async (req, res) => {
     
     if (customer_name.length > 100) {
       return res.status(400).json({ error: 'Tên khách hàng không được vượt quá 100 ký tự' });
+    }
+    
+    // Tăng cường validation: tên phải có ít nhất 2 ký tự không phải số
+    const nameWithoutNumbers = customer_name.replace(/\d/g, '');
+    if (nameWithoutNumbers.trim().length < 2) {
+      return res.status(400).json({ error: 'Tên khách hàng phải có ít nhất 2 ký tự chữ' });
     }
 
     // Validate phone (optional but if provided, must be valid)

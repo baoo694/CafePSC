@@ -1,6 +1,7 @@
 import { getSupabaseClient } from '../lib/supabase.js';
 import { verifyAdminToken } from '../lib/auth.js';
 import { rateLimit, customerRateLimit } from '../lib/rateLimit.js';
+import { detectSpamOrder } from '../lib/spamDetection.js';
 
 // Helper function để set CORS headers
 function setCORSHeaders(res, req, methods = 'GET, POST, OPTIONS') {
@@ -72,7 +73,22 @@ export default async function handler(req, res) {
       setCORSHeaders(res, req, 'POST, OPTIONS');
       
       // Validate customer info first (needed for customer-based rate limiting)
-      const { customer_name, phone } = req.body || {};
+      const { customer_name, phone, delivery_address, note, items } = req.body || {};
+      
+      // SPAM DETECTION: Phát hiện pattern spam (khach1, khach2, khach3...)
+      const spamCheck = detectSpamOrder({ customer_name, phone, delivery_address });
+      if (spamCheck.isSpam) {
+        console.warn('Spam detected:', {
+          customer_name,
+          phone,
+          delivery_address,
+          reason: spamCheck.reason,
+          pattern: spamCheck.pattern
+        });
+        return res.status(400).json({ 
+          error: 'Đơn hàng không hợp lệ. Vui lòng sử dụng thông tin thật của bạn.' 
+        });
+      }
       
       // Customer-based rate limiting (ưu tiên cho môi trường trường học)
       if (customer_name && phone) {
@@ -97,7 +113,6 @@ export default async function handler(req, res) {
       }
 
       try {
-        const { delivery_address, note, items } = req.body;
 
         // Validate customer_name
         if (!customer_name || typeof customer_name !== 'string') {
@@ -108,6 +123,11 @@ export default async function handler(req, res) {
         }
         if (customer_name.length > 100) {
           return res.status(400).json({ error: 'Tên khách hàng không được vượt quá 100 ký tự' });
+        }
+        // Tăng cường validation: tên phải có ít nhất 2 ký tự không phải số
+        const nameWithoutNumbers = customer_name.replace(/\d/g, '');
+        if (nameWithoutNumbers.trim().length < 2) {
+          return res.status(400).json({ error: 'Tên khách hàng phải có ít nhất 2 ký tự chữ' });
         }
 
         // Validate phone
