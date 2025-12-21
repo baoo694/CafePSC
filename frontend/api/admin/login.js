@@ -1,5 +1,6 @@
 import { rateLimit } from '../../lib/rateLimit.js';
 import { generateCSRFToken } from '../../lib/csrf.js';
+import { generateAdminToken } from '../../lib/jwt.js';
 
 export default async function handler(req, res) {
   // CORS headers
@@ -48,7 +49,8 @@ export default async function handler(req, res) {
     }
 
     if (password === ADMIN_PASSWORD) {
-      const token = Buffer.from(`admin:${Date.now()}`).toString('base64');
+      // Generate JWT token (secure, signed with secret key)
+      const token = generateAdminToken();
       
       // Generate CSRF token
       const csrfToken = generateCSRFToken(token);
