@@ -52,13 +52,55 @@ app.post('/api/admin/login', (req, res) => {
   }
 });
 
+// Helper function to verify admin token
+const verifyAdminToken = (req) => {
+  const authHeader = req.headers.authorization;
+  
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return { valid: false, error: 'Missing or invalid authorization header' };
+  }
+  
+  const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+  
+  try {
+    // Decode the token (it's base64 encoded)
+    const decoded = Buffer.from(token, 'base64').toString('utf-8');
+    
+    // Check if token format is correct (admin:timestamp)
+    if (!decoded.startsWith('admin:')) {
+      return { valid: false, error: 'Invalid token format' };
+    }
+    
+    // Extract timestamp
+    const timestamp = parseInt(decoded.split(':')[1]);
+    
+    if (isNaN(timestamp)) {
+      return { valid: false, error: 'Invalid token timestamp' };
+    }
+    
+    // Check if token is expired (24 hours)
+    const now = Date.now();
+    const tokenAge = now - timestamp;
+    const maxAge = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+    
+    if (tokenAge > maxAge || tokenAge < 0) {
+      return { valid: false, error: 'Token expired' };
+    }
+    
+    return { valid: true };
+  } catch (error) {
+    return { valid: false, error: 'Invalid token' };
+  }
+};
+
 // Middleware kiểm tra admin token
 const requireAdmin = (req, res, next) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Unauthorized' });
+  const verification = verifyAdminToken(req);
+  
+  if (!verification.valid) {
+    return res.status(401).json({ error: 'Unauthorized: ' + verification.error });
   }
-  // Trong thực tế nên verify JWT, ở đây chỉ kiểm tra có token
+  
   next();
 };
 
@@ -77,11 +119,20 @@ app.get('/api/products', async (req, res) => {
   }
 });
 
-// Update product availability
-app.put('/api/products/:id/availability', async (req, res) => {
+// Update product availability (admin only)
+app.put('/api/products/:id/availability', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { is_available } = req.body;
+    
+    // Validate input
+    if (!id || isNaN(parseInt(id))) {
+      return res.status(400).json({ error: 'Invalid product ID' });
+    }
+    
+    if (typeof is_available !== 'boolean') {
+      return res.status(400).json({ error: 'is_available must be a boolean' });
+    }
     
     const { data, error } = await supabase
       .from('products')
@@ -91,6 +142,10 @@ app.put('/api/products/:id/availability', async (req, res) => {
       .single();
     
     if (error) throw error;
+    
+    if (!data) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
     
     // Broadcast menu update to all clients
     io.emit('menu:update', data);
@@ -127,16 +182,98 @@ app.post('/api/orders', async (req, res) => {
   try {
     const { customer_name, phone, student_id, note, items } = req.body;
     
+    // Validate customer_name
+    if (!customer_name || typeof customer_name !== 'string') {
+      return res.status(400).json({ error: 'Tên khách hàng là bắt buộc' });
+    }
+    
+    if (customer_name.trim().length === 0) {
+      return res.status(400).json({ error: 'Tên khách hàng không được để trống' });
+    }
+    
+    if (customer_name.length > 100) {
+      return res.status(400).json({ error: 'Tên khách hàng không được vượt quá 100 ký tự' });
+    }
+
+    // Validate phone (optional but if provided, must be valid)
+    if (phone && typeof phone === 'string') {
+      // Basic phone validation: 10-15 digits, may include +, spaces, dashes
+      const phoneRegex = /^[\+]?[(]?[0-9]{1,4}[)]?[-\s\.]?[(]?[0-9]{1,4}[)]?[-\s\.]?[0-9]{1,9}$/;
+      if (!phoneRegex.test(phone.replace(/\s/g, ''))) {
+        return res.status(400).json({ error: 'Số điện thoại không hợp lệ' });
+      }
+      if (phone.length > 20) {
+        return res.status(400).json({ error: 'Số điện thoại quá dài' });
+      }
+    }
+
+    // Validate note
+    if (note && typeof note === 'string' && note.length > 500) {
+      return res.status(400).json({ error: 'Ghi chú không được vượt quá 500 ký tự' });
+    }
+
+    // Validate student_id if provided
+    if (student_id && typeof student_id === 'string' && student_id.length > 50) {
+      return res.status(400).json({ error: 'Mã sinh viên không được vượt quá 50 ký tự' });
+    }
+    
+    // Validate items
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ error: 'Đơn hàng phải có ít nhất một sản phẩm' });
+    }
+
+    if (items.length > 50) {
+      return res.status(400).json({ error: 'Đơn hàng không được có quá 50 sản phẩm' });
+    }
+
+    // Validate each item
+    for (const item of items) {
+      if (!item.product_id || isNaN(parseInt(item.product_id))) {
+        return res.status(400).json({ error: 'Mỗi sản phẩm phải có product_id hợp lệ' });
+      }
+      
+      if (!item.quantity || isNaN(parseInt(item.quantity)) || parseInt(item.quantity) < 1) {
+        return res.status(400).json({ error: 'Số lượng sản phẩm phải là số nguyên dương' });
+      }
+      
+      if (parseInt(item.quantity) > 100) {
+        return res.status(400).json({ error: 'Số lượng mỗi sản phẩm không được vượt quá 100' });
+      }
+    }
+    
+    // Check if all products are available
+    const productIds = items.map(item => parseInt(item.product_id));
+    const { data: products, error: productsError } = await supabase
+      .from('products')
+      .select('id, name, is_available')
+      .in('id', productIds);
+    
+    if (productsError) throw productsError;
+    
+    // Check if all requested products exist
+    if (products.length !== productIds.length) {
+      return res.status(400).json({ error: 'Một hoặc nhiều sản phẩm không tồn tại' });
+    }
+    
+    // Check if all products are available
+    const unavailableProducts = products.filter(p => !p.is_available);
+    if (unavailableProducts.length > 0) {
+      const productNames = unavailableProducts.map(p => p.name).join(', ');
+      return res.status(400).json({ 
+        error: `Không thể đặt hàng. Các sản phẩm sau hiện không có sẵn: ${productNames}` 
+      });
+    }
+    
     // Build order data - only include phone/student_id if they exist in DB
     const orderData = {
-      customer_name,
-      note,
+      customer_name: customer_name.trim(),
+      note: note ? note.trim() : null,
       status: 'pending',
     };
     
     // Add optional fields if provided
-    if (phone) orderData.phone = phone;
-    if (student_id) orderData.student_id = student_id;
+    if (phone) orderData.phone = phone.trim();
+    if (student_id) orderData.student_id = student_id.trim();
     
     // Create order
     const { data: order, error: orderError } = await supabase
@@ -176,11 +313,29 @@ app.post('/api/orders', async (req, res) => {
   }
 });
 
-// Update order status
-app.put('/api/orders/:id/status', async (req, res) => {
+// Valid order statuses
+const VALID_STATUSES = ['pending', 'making', 'done', 'cancelled'];
+
+// Update order status (admin only)
+app.put('/api/orders/:id/status', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
+    
+    // Validate input
+    if (!id || isNaN(parseInt(id))) {
+      return res.status(400).json({ error: 'Invalid order ID' });
+    }
+    
+    if (!status || typeof status !== 'string') {
+      return res.status(400).json({ error: 'Status is required' });
+    }
+    
+    if (!VALID_STATUSES.includes(status)) {
+      return res.status(400).json({ 
+        error: `Invalid status. Must be one of: ${VALID_STATUSES.join(', ')}` 
+      });
+    }
     
     const { data, error } = await supabase
       .from('orders')
@@ -196,6 +351,10 @@ app.put('/api/orders/:id/status', async (req, res) => {
       .single();
     
     if (error) throw error;
+    
+    if (!data) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
     
     // Broadcast status update to all clients
     io.emit('order:status', data);
@@ -249,9 +408,25 @@ app.put('/api/orders/:id/cancel', async (req, res) => {
 });
 
 // Delete a specific order (admin action)
-app.delete('/api/orders/:id', async (req, res) => {
+app.delete('/api/orders/:id', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
+    
+    // Validate input
+    if (!id || isNaN(parseInt(id))) {
+      return res.status(400).json({ error: 'Invalid order ID' });
+    }
+    
+    // Check if order exists
+    const { data: existingOrder, error: checkError } = await supabase
+      .from('orders')
+      .select('id')
+      .eq('id', id)
+      .single();
+    
+    if (checkError || !existingOrder) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
     
     // First delete order items (due to foreign key constraint)
     const { error: itemsError } = await supabase
@@ -279,7 +454,7 @@ app.delete('/api/orders/:id', async (req, res) => {
 });
 
 // Reset pending/making orders (admin action) - keeps completed orders for statistics
-app.delete('/api/orders/reset', async (req, res) => {
+app.delete('/api/orders/reset', requireAdmin, async (req, res) => {
   try {
     // Get IDs of orders that are NOT done (pending, making, cancelled)
     const { data: ordersToDelete, error: fetchError } = await supabase

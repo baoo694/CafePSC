@@ -13,12 +13,23 @@ export async function fetchProducts() {
 }
 
 export async function updateProductAvailability(id, isAvailable) {
+  const token = localStorage.getItem('adminToken');
+  if (!token) {
+    throw new Error('Admin authentication required');
+  }
+  
   const response = await fetch(`${API_URL}/products/${id}/availability`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
     body: JSON.stringify({ is_available: isAvailable }),
   });
-  if (!response.ok) throw new Error('Failed to update product');
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Failed to update product' }));
+    throw new Error(error.error || 'Failed to update product');
+  }
   return response.json();
 }
 
@@ -35,25 +46,50 @@ export async function createOrder(orderData) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(orderData),
   });
-  if (!response.ok) throw new Error('Failed to create order');
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Failed to create order' }));
+    throw new Error(error.error || 'Failed to create order');
+  }
   return response.json();
 }
 
 export async function updateOrderStatus(id, status) {
+  const token = localStorage.getItem('adminToken');
+  if (!token) {
+    throw new Error('Admin authentication required');
+  }
+  
   const response = await fetch(`${API_URL}/orders/${id}/status`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
     body: JSON.stringify({ status }),
   });
-  if (!response.ok) throw new Error('Failed to update order');
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Failed to update order' }));
+    throw new Error(error.error || 'Failed to update order');
+  }
   return response.json();
 }
 
 export async function resetAllOrders() {
+  const token = localStorage.getItem('adminToken');
+  if (!token) {
+    throw new Error('Admin authentication required');
+  }
+  
   const response = await fetch(`${API_URL}/orders/reset`, {
     method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
   });
-  if (!response.ok) throw new Error('Failed to reset orders');
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Failed to reset orders' }));
+    throw new Error(error.error || 'Failed to reset orders');
+  }
   return response.json();
 }
 
@@ -69,11 +105,19 @@ export async function cancelOrder(id) {
 }
 
 export async function deleteOrder(id) {
+  const token = localStorage.getItem('adminToken');
+  if (!token) {
+    throw new Error('Admin authentication required');
+  }
+  
   const response = await fetch(`${API_URL}/orders/${id}`, {
     method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
   });
   if (!response.ok) {
-    const error = await response.json();
+    const error = await response.json().catch(() => ({ error: 'Failed to delete order' }));
     throw new Error(error.error || 'Failed to delete order');
   }
   return response.json();

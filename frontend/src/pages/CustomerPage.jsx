@@ -246,6 +246,16 @@ export default function CustomerPage() {
     if (pendingDirectOrder) {
       // Place order directly with the product from modal
       const { product, options, quantity } = pendingDirectOrder;
+      
+      // Check if product is still available
+      if (!product.is_available) {
+        toast.error(`${product.name} hiện không có sẵn`);
+        setPendingDirectOrder(null);
+        setIsInfoModalOpen(false);
+        setIsEditInfoMode(false);
+        return;
+      }
+      
       setPendingDirectOrder(null);
       
       setIsSubmitting(true);
@@ -282,7 +292,7 @@ export default function CustomerPage() {
         
         toast.success('Đơn hàng đã được gửi!');
       } catch (error) {
-        toast.error('Không thể đặt hàng. Vui lòng thử lại.');
+        toast.error(error.message || 'Không thể đặt hàng. Vui lòng thử lại.');
       } finally {
         setIsSubmitting(false);
       }
@@ -308,6 +318,16 @@ export default function CustomerPage() {
 
     if (!finalName || !finalPhone || !finalAddress) {
       toast.error('Vui lòng nhập đầy đủ thông tin');
+      return;
+    }
+
+    // Check if all products in cart are still available
+    const unavailableItems = cart.filter(item => !item.product.is_available);
+    if (unavailableItems.length > 0) {
+      const productNames = unavailableItems.map(item => item.product.name).join(', ');
+      toast.error(`Không thể đặt hàng. Các sản phẩm sau hiện không có sẵn: ${productNames}`);
+      // Remove unavailable items from cart
+      setCart(prev => prev.filter(item => item.product.is_available));
       return;
     }
 
@@ -347,7 +367,7 @@ export default function CustomerPage() {
       setOrderNote('');
       setIsCartOpen(false);
     } catch (error) {
-      toast.error('Không thể đặt hàng. Vui lòng thử lại.');
+      toast.error(error.message || 'Không thể đặt hàng. Vui lòng thử lại.');
     } finally {
       setIsSubmitting(false);
     }
@@ -369,6 +389,13 @@ export default function CustomerPage() {
 
   // Place order directly from modal (without adding to cart)
   const handlePlaceOrderDirect = useCallback(async (product, options, quantity) => {
+    // Check if product is still available
+    if (!product.is_available) {
+      toast.error(`${product.name} hiện không có sẵn`);
+      setCustomizingItem(null);
+      return;
+    }
+
     // Check if customer info is complete
     if (!customerName || !customerPhone || !customerDeliveryAddress) {
       // Store product info temporarily to place order after info is confirmed
@@ -414,7 +441,7 @@ export default function CustomerPage() {
       
       toast.success('Đơn hàng đã được gửi!');
     } catch (error) {
-      toast.error('Không thể đặt hàng. Vui lòng thử lại.');
+      toast.error(error.message || 'Không thể đặt hàng. Vui lòng thử lại.');
     } finally {
       setIsSubmitting(false);
     }

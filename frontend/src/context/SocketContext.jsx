@@ -78,7 +78,9 @@ export function SocketProvider({ children }) {
       });
     } else if (supabaseClient) {
       // Use Supabase Realtime for production
-      console.log('Setting up Supabase Realtime...');
+      if (import.meta.env.DEV) {
+        console.log('Setting up Supabase Realtime...');
+      }
       setIsConnected(true);
 
       // Tối ưu: Sử dụng MỘT channel duy nhất thay vì 2 channels riêng biệt
@@ -97,7 +99,10 @@ export function SocketProvider({ children }) {
           schema: 'public', 
           table: 'orders' 
         }, async (payload) => {
-          console.log('New order:', payload);
+          // Debug log chỉ trong development
+          if (import.meta.env.DEV) {
+            console.log('New order:', payload);
+          }
           const completeOrder = await fetchCompleteOrder(payload.new.id);
           if (completeOrder && listenersRef.current['order:new']) {
             listenersRef.current['order:new'](completeOrder);
@@ -109,7 +114,10 @@ export function SocketProvider({ children }) {
           schema: 'public', 
           table: 'orders' 
         }, async (payload) => {
-          console.log('Order updated:', payload);
+          // Debug log chỉ trong development
+          if (import.meta.env.DEV) {
+            console.log('Order updated:', payload);
+          }
           const completeOrder = await fetchCompleteOrder(payload.new.id);
           if (completeOrder) {
             if (payload.new.status === 'cancelled' && listenersRef.current['order:cancelled']) {
@@ -125,7 +133,10 @@ export function SocketProvider({ children }) {
           schema: 'public', 
           table: 'orders' 
         }, (payload) => {
-          console.log('Order deleted:', payload);
+          // Debug log chỉ trong development
+          if (import.meta.env.DEV) {
+            console.log('Order deleted:', payload);
+          }
           if (listenersRef.current['order:deleted']) {
             listenersRef.current['order:deleted'](payload.old.id);
           }
@@ -136,13 +147,18 @@ export function SocketProvider({ children }) {
           schema: 'public', 
           table: 'products' 
         }, (payload) => {
-          console.log('Product updated:', payload);
+          // Debug log chỉ trong development
+          if (import.meta.env.DEV) {
+            console.log('Product updated:', payload);
+          }
           if (listenersRef.current['menu:update']) {
             listenersRef.current['menu:update'](payload.new);
           }
         })
         .subscribe((status) => {
-          console.log('Main channel status:', status);
+          if (import.meta.env.DEV) {
+            console.log('Main channel status:', status);
+          }
           if (status === 'SUBSCRIBED') {
             setIsConnected(true);
           } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
@@ -151,7 +167,9 @@ export function SocketProvider({ children }) {
         });
 
       return () => {
-        console.log('Cleaning up Supabase channel...');
+        if (import.meta.env.DEV) {
+          console.log('Cleaning up Supabase channel...');
+        }
         if (mainChannel) {
           supabaseClient.removeChannel(mainChannel);
         }
