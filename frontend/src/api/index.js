@@ -51,8 +51,16 @@ export async function updateProductAvailability(id, isAvailable) {
 
 // Orders API
 export async function fetchOrders() {
-  const response = await fetch(`${API_URL}/orders`);
-  if (!response.ok) throw new Error('Failed to fetch orders');
+  const response = await fetch(`${API_URL}/orders`, {
+    credentials: 'include' // Include cookies for auth
+  });
+  if (!response.ok) {
+    // Handle 401 (Unauthorized) gracefully - user not authenticated
+    if (response.status === 401) {
+      throw new Error('Unauthorized');
+    }
+    throw new Error('Failed to fetch orders');
+  }
   return response.json();
 }
 
@@ -198,16 +206,18 @@ export async function adminLogout() {
 
 // Check admin authentication status
 export async function checkAdminAuth() {
-  // Sử dụng một endpoint admin đơn giản để kiểm tra auth
-  // Nếu có cookie hợp lệ, request sẽ thành công
+  // Use dedicated auth check endpoint to avoid unnecessary 401 logs
+  // This endpoint returns 200 if authenticated, 401 if not
   try {
-    const response = await fetch(`${API_URL}/orders`, {
+    const response = await fetch(`${API_URL}/admin/check`, {
       method: 'GET',
-      credentials: 'include'
+      credentials: 'include',
     });
-    // Nếu response ok hoặc 401, chúng ta biết được trạng thái auth
-    return response.status !== 401;
-  } catch {
+    // 401 = not authenticated (expected, not an error)
+    // 200 = authenticated
+    return response.status === 200;
+  } catch (error) {
+    // Network error or other issues
     return false;
   }
 }

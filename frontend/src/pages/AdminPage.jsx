@@ -95,7 +95,13 @@ export default function AdminPage() {
         setOrders(ordersData);
         setIsLoading(false);
       } catch (error) {
-        toast.error('Không thể tải dữ liệu');
+        // Handle authentication errors gracefully
+        if (error.message === 'Unauthorized' || error.message?.includes('Unauthorized')) {
+          setIsAuthenticated(false);
+          toast.error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+        } else {
+          toast.error('Không thể tải dữ liệu');
+        }
         setIsLoading(false);
       }
     }
