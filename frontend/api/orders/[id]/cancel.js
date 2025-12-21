@@ -86,9 +86,20 @@ export default async function handler(req, res) {
 
       // Verify ownership: Check customer_name and phone from request body
       // Frontend should send these to verify ownership
-      const { customer_name, phone } = req.body;
+      let customer_name, phone;
+      
+      try {
+        // Parse body if it's a string
+        const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+        customer_name = body?.customer_name;
+        phone = body?.phone;
+      } catch (parseError) {
+        console.error('Error parsing request body:', parseError);
+        return res.status(400).json({ error: 'Invalid request body format' });
+      }
       
       if (!customer_name || !phone) {
+        console.error('Missing customer info:', { customer_name: !!customer_name, phone: !!phone });
         return res.status(400).json({ error: 'customer_name và phone là bắt buộc để xác minh quyền sở hữu đơn hàng' });
       }
       
