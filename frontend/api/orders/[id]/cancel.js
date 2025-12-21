@@ -111,10 +111,21 @@ export default async function handler(req, res) {
 
       // Use admin client to update (bypasses RLS)
       const adminSupabase = getAdminSupabaseClient();
-      const { data, error } = await adminSupabase
+      
+      // First update the order
+      const { error: updateError } = await adminSupabase
         .from('orders')
         .update({ status: 'cancelled' })
-        .eq('id', orderId)
+        .eq('id', orderId);
+
+      if (updateError) {
+        console.error('Error updating order:', updateError);
+        throw updateError;
+      }
+      
+      // Then fetch the updated order
+      const { data, error: fetchError } = await adminSupabase
+        .from('orders')
         .select(`
           *,
           order_items (
@@ -122,15 +133,19 @@ export default async function handler(req, res) {
             product:products (*)
           )
         `)
+        .eq('id', orderId)
         .single();
 
-      if (error) {
-        console.error('Error updating order:', error);
-        throw error;
+      if (fetchError) {
+        console.error('Error fetching updated order:', fetchError);
+        if (fetchError.code === 'PGRST116') {
+          return res.status(404).json({ error: 'Order not found after update' });
+        }
+        throw fetchError;
       }
       
       if (!data) {
-        return res.status(404).json({ error: 'Order not found' });
+        return res.status(404).json({ error: 'Order not found after update' });
       }
       
       return res.status(200).json(data);
