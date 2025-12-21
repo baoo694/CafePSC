@@ -215,7 +215,21 @@ export default async function handler(req, res) {
           product:products (*)
         `);
 
-      if (itemsError) throw itemsError;
+      if (itemsError) {
+        // Rollback: Delete the order if items insertion fails
+        await supabase.from('orders').delete().eq('id', order.id);
+        throw itemsError;
+      }
+
+      // SECURITY FIX: Ensure at least one item was inserted successfully
+      // Prevent creating orders with 0 items (0đ total)
+      if (!insertedItems || insertedItems.length === 0) {
+        // Rollback: Delete the order if no items were inserted
+        await supabase.from('orders').delete().eq('id', order.id);
+        return res.status(400).json({ 
+          error: 'Không thể tạo đơn hàng. Không có sản phẩm hợp lệ nào được thêm vào đơn hàng.' 
+        });
+      }
 
       const fullOrder = { ...order, order_items: insertedItems };
       return res.status(200).json(fullOrder);
