@@ -102,34 +102,40 @@ export default function OrderCard({ order, onStatusUpdate, onDelete, style }) {
 
       {/* Order Items */}
       <div className={styles.items}>
-        {order_items && order_items.length > 0 ? order_items.map((item) => {
-          // Ensure product exists
-          if (!item.product) {
-            console.warn('Order item missing product:', item);
-            return null;
-          }
-          
-          const unitPrice = calculateUnitPrice(item.product, item.options_json || {});
-          const itemTotal = unitPrice * (item.quantity || 0);
-          
-          return (
-            <div key={item.id} className={styles.item}>
-              <div className={styles.itemMain}>
-                <span className={styles.itemQty}>x{item.quantity}</span>
-                <span className={styles.itemName}>{item.product?.name}</span>
-                <span className={styles.itemPrice}>
-                  {itemTotal.toLocaleString('vi-VN')}đ
-                </span>
+        {order_items && order_items.length > 0 ? (
+          order_items.map((item) => {
+            // Ensure product exists
+            if (!item.product) {
+              console.warn('Order item missing product:', item);
+              return null;
+            }
+            
+            const unitPrice = calculateUnitPrice(item.product, item.options_json || {});
+            const itemTotal = unitPrice * (item.quantity || 0);
+            
+            return (
+              <div key={item.id} className={styles.item}>
+                <div className={styles.itemMain}>
+                  <span className={styles.itemQty}>x{item.quantity}</span>
+                  <span className={styles.itemName}>{item.product?.name}</span>
+                  <span className={styles.itemPrice}>
+                    {itemTotal.toLocaleString('vi-VN')}đ
+                  </span>
+                </div>
+                {formatOptions(item.options_json) && (
+                  <p className={styles.itemOptions}>{formatOptions(item.options_json)}</p>
+                )}
+                <div className={styles.itemPriceDetail}>
+                  {item.quantity} × {unitPrice.toLocaleString('vi-VN')}đ
+                </div>
               </div>
-              {formatOptions(item.options_json) && (
-                <p className={styles.itemOptions}>{formatOptions(item.options_json)}</p>
-              )}
-              <div className={styles.itemPriceDetail}>
-                {item.quantity} × {unitPrice.toLocaleString('vi-VN')}đ
-              </div>
-            </div>
-          );
-        })}
+            );
+          }).filter(Boolean)
+        ) : (
+          <div className={styles.item}>
+            <span className={styles.itemName}>Đang tải thông tin đơn hàng...</span>
+          </div>
+        )}
       </div>
 
       {/* Order Total */}
