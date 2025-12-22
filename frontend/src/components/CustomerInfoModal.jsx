@@ -82,6 +82,9 @@ export default function CustomerInfoModal({ isOpen, onClose, onConfirm, initialD
               autoComplete="street-address"
               required
             />
+            <p className={styles.note}>
+              ⚠️ Chỉ ship trong khuôn viên đại học Phenikaa
+            </p>
           </div>
 
           <div className={styles.actions}>

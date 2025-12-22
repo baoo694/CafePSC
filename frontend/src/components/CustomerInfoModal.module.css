@@ -97,6 +97,14 @@
   opacity: 0.6;
 }
 
+.note {
+  margin-top: var(--space-xs);
+  font-size: 0.875rem;
+  color: var(--color-medium-roast);
+  font-style: italic;
+  line-height: 1.4;
+}
+
 .actions {
   display: flex;
   gap: var(--space-md);
