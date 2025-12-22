@@ -51,10 +51,20 @@ export default function OrderCard({ order, onStatusUpdate, onDelete, style }) {
 
   // Calculate total order price
   const calculateTotal = () => {
-    return order_items?.reduce((sum, item) => {
-      const unitPrice = calculateUnitPrice(item.product, item.options_json);
-      return sum + unitPrice * item.quantity;
-    }, 0) || 0;
+    if (!order_items || !Array.isArray(order_items) || order_items.length === 0) {
+      return 0;
+    }
+    
+    return order_items.reduce((sum, item) => {
+      // Ensure product and options_json exist
+      if (!item.product || !item.product.price) {
+        console.warn('Order item missing product data:', item);
+        return sum;
+      }
+      
+      const unitPrice = calculateUnitPrice(item.product, item.options_json || {});
+      return sum + unitPrice * (item.quantity || 0);
+    }, 0);
   };
 
   const orderTotal = calculateTotal();
@@ -92,9 +102,15 @@ export default function OrderCard({ order, onStatusUpdate, onDelete, style }) {
 
       {/* Order Items */}
       <div className={styles.items}>
-        {order_items?.map((item) => {
-          const unitPrice = calculateUnitPrice(item.product, item.options_json);
-          const itemTotal = unitPrice * item.quantity;
+        {order_items && order_items.length > 0 ? order_items.map((item) => {
+          // Ensure product exists
+          if (!item.product) {
+            console.warn('Order item missing product:', item);
+            return null;
+          }
+          
+          const unitPrice = calculateUnitPrice(item.product, item.options_json || {});
+          const itemTotal = unitPrice * (item.quantity || 0);
           
           return (
             <div key={item.id} className={styles.item}>

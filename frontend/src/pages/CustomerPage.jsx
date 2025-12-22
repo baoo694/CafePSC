@@ -354,6 +354,28 @@ export default function CustomerPage() {
 
       const newOrder = await createOrder(orderData);
       
+      // Ensure order has order_items with product data
+      if (!newOrder.order_items || !Array.isArray(newOrder.order_items) || newOrder.order_items.length === 0) {
+        console.error('Order created but missing order_items:', newOrder);
+        toast.error('Đơn hàng đã được tạo nhưng thiếu thông tin. Vui lòng reload trang.');
+        return;
+      }
+      
+      // Verify all items have product data
+      const missingProducts = newOrder.order_items.filter(item => !item.product);
+      if (missingProducts.length > 0) {
+        console.error('Order items missing product data:', missingProducts);
+        // Fetch complete order data
+        const completeOrder = await fetchCustomerOrders(finalName, finalPhone);
+        const foundOrder = completeOrder.find(o => o.id === newOrder.id);
+        if (foundOrder && foundOrder.order_items) {
+          newOrder.order_items = foundOrder.order_items;
+        } else {
+          toast.error('Đơn hàng đã được tạo nhưng thiếu thông tin sản phẩm. Vui lòng reload trang.');
+          return;
+        }
+      }
+      
       // Update orders state immediately
       setAllOrders(prev => {
         const exists = prev.some(o => o.id === newOrder.id);
