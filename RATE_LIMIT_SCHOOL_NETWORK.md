@@ -76,3 +76,4 @@
 - ✅ Không bị ảnh hưởng bởi người khác
 - ✅ Vẫn chống được spam hiệu quả
 
+

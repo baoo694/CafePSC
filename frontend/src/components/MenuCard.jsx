@@ -4,11 +4,27 @@ import styles from './MenuCard.module.css';
 export default function MenuCard({ product, onAdd, style }) {
   const { name, price, is_available, category } = product;
 
-  const categoryEmoji = {
-    coffee: '☕',
-    tea: '🍵',
-    smoothie: '🥤',
-    juice: '🍊',
+  // Icon mapping theo tên sản phẩm cụ thể
+  const getProductEmoji = (productName, productCategory) => {
+    const nameLower = productName.toLowerCase();
+    
+    // Kiểm tra tên sản phẩm cụ thể trước
+    if (nameLower.includes('chanh leo')) {
+      return '🍋'; // Cocktail glass cho chanh leo
+    }
+    if (nameLower.includes('cam')) {
+      return '🍊'; // Orange cho nước cam
+    }
+    
+    // Nếu không có tên cụ thể, dùng category
+    const categoryEmoji = {
+      coffee: '☕',
+      tea: '🍵',
+      smoothie: '🥤',
+      juice: '🍊',
+    };
+    
+    return categoryEmoji[productCategory] || '☕';
   };
 
   return (
@@ -18,7 +34,7 @@ export default function MenuCard({ product, onAdd, style }) {
     >
       <div className={styles.cardTop}>
         <span className={styles.emoji}>
-          {categoryEmoji[category] || '☕'}
+          {getProductEmoji(name, category)}
         </span>
         <span className={styles.category}>{category}</span>
       </div>
@@ -51,6 +67,7 @@ export default function MenuCard({ product, onAdd, style }) {
     </div>
   );
 }
+
 
 
 

@@ -404,3 +404,4 @@ Upgrade token generation to JWT (xem khuyến nghị ở trên)
 **Status:** ⚠️ **CẦN FIX 2 LỖ HỔNG NGHIÊM TRỌNG TRƯỚC KHI DEPLOY**  
 **Next Review:** Sau khi fix các lỗ hổng nghiêm trọng
 
+
