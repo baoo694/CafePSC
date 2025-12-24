@@ -82,7 +82,14 @@ export async function createOrder(orderData) {
   });
   if (!response.ok) {
     const error = await response.json().catch(() => ({ error: 'Failed to create order' }));
-    throw new Error(error.error || 'Failed to create order');
+    // Log chi tiết để debug
+    console.error('Order creation failed:', {
+      status: response.status,
+      statusText: response.statusText,
+      error: error,
+      orderData: orderData
+    });
+    throw new Error(error.error || 'Không thể đặt hàng. Vui lòng thử lại.');
   }
   return response.json();
 }

@@ -328,6 +328,38 @@ export default function CustomerPage() {
       return;
     }
 
+    // Client-side validation để tránh lỗi 400
+    // Validate tên: phải có ít nhất 2 ký tự chữ
+    const nameWithoutNumbers = finalName.replace(/\d/g, '');
+    if (nameWithoutNumbers.trim().length < 2) {
+      toast.error('Tên khách hàng phải có ít nhất 2 ký tự chữ');
+      return;
+    }
+    if (finalName.length > 100) {
+      toast.error('Tên khách hàng không được vượt quá 100 ký tự');
+      return;
+    }
+
+    // Validate số điện thoại
+    if (finalPhone) {
+      const phoneRegex = /^[\+]?[(]?[0-9]{1,4}[)]?[-\s\.]?[(]?[0-9]{1,4}[)]?[-\s\.]?[0-9]{1,9}$/;
+      const phoneClean = finalPhone.replace(/\s/g, '');
+      if (!phoneRegex.test(phoneClean)) {
+        toast.error('Số điện thoại không hợp lệ');
+        return;
+      }
+      if (finalPhone.length > 20) {
+        toast.error('Số điện thoại quá dài');
+        return;
+      }
+    }
+
+    // Validate địa chỉ
+    if (finalAddress && finalAddress.length > 200) {
+      toast.error('Địa chỉ giao hàng không được vượt quá 200 ký tự');
+      return;
+    }
+
     // Check if all products in cart are still available
     const unavailableItems = cart.filter(item => !item.product.is_available);
     if (unavailableItems.length > 0) {
@@ -396,7 +428,11 @@ export default function CustomerPage() {
       setOrderNote('');
       setIsCartOpen(false);
     } catch (error) {
-      toast.error(error.message || 'Không thể đặt hàng. Vui lòng thử lại.');
+      // Log chi tiết lỗi để debug
+      console.error('Error placing order:', error);
+      // Hiển thị message lỗi từ API hoặc message mặc định
+      const errorMessage = error.message || 'Không thể đặt hàng. Vui lòng thử lại.';
+      toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
