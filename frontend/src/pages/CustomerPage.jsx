@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSocket } from '../context/SocketContext';
 import { fetchProducts, fetchOrders, fetchCustomerOrders, createOrder, cancelOrder } from '../api';
@@ -36,6 +36,7 @@ export default function CustomerPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeCategory, setActiveCategory] = useState('all');
+  const cartRestoredRef = useRef(false); // Track if cart has been restored from localStorage
 
   // Get customer info from localStorage (optional - can be empty initially)
   useEffect(() => {
@@ -47,6 +48,100 @@ export default function CustomerPage() {
     setCustomerPhone(phone);
     setCustomerDeliveryAddress(deliveryAddress);
   }, []);
+
+  // Save cart to localStorage whenever it changes
+  useEffect(() => {
+    if (cart.length > 0) {
+      // Only save product_id, options, quantity - not the full product object
+      const cartData = cart
+        .filter(item => item.product && item.product.id) // Only save valid items
+        .map(item => {
+          const productId = parseInt(item.product.id);
+          if (isNaN(productId)) {
+            console.warn('Invalid product_id when saving cart:', item.product.id);
+            return null;
+          }
+          return {
+            product_id: productId, // Ensure it's a number
+            options: item.options || {},
+            quantity: parseInt(item.quantity) || 1,
+            id: item.id || Date.now() + Math.random()
+          };
+        })
+        .filter(Boolean); // Remove null items
+      
+      if (cartData.length > 0) {
+        localStorage.setItem('cart', JSON.stringify(cartData));
+      } else {
+        localStorage.removeItem('cart');
+      }
+    } else {
+      // Clear cart from localStorage if empty
+      localStorage.removeItem('cart');
+    }
+  }, [cart]);
+
+  // Restore cart from localStorage after products are loaded (only once)
+  useEffect(() => {
+    if (products.length === 0) return; // Wait for products to load
+    if (cartRestoredRef.current) return; // Already restored
+    
+    cartRestoredRef.current = true; // Mark as restored
+    
+    try {
+      const savedCart = localStorage.getItem('cart');
+      if (savedCart) {
+        const cartData = JSON.parse(savedCart);
+        
+        // Map cart data to full cart items with product objects
+        const restoredCart = cartData
+          .map(item => {
+            // Ensure product_id is valid
+            const productId = parseInt(item.product_id);
+            if (isNaN(productId)) {
+              console.warn('Invalid product_id in saved cart:', item.product_id);
+              return null;
+            }
+            
+            // Find product by id (compare as numbers)
+            const product = products.find(p => parseInt(p.id) === productId);
+            if (!product) {
+              console.warn('Product not found:', productId);
+              return null; // Product no longer exists
+            }
+            
+            // Check if product is still available
+            if (!product.is_available) {
+              console.warn('Product unavailable:', product.name);
+              return null; // Product is unavailable
+            }
+            
+            return {
+              product,
+              options: item.options || {},
+              quantity: parseInt(item.quantity) || 1,
+              id: item.id || Date.now() + Math.random()
+            };
+          })
+          .filter(Boolean); // Remove null items
+        
+        if (restoredCart.length > 0) {
+          setCart(restoredCart);
+          // Show notification if some items were removed
+          const removedCount = cartData.length - restoredCart.length;
+          if (removedCount > 0) {
+            toast(`Đã xóa ${removedCount} sản phẩm không còn sẵn từ giỏ hàng`, { icon: '⚠️' });
+          }
+        } else if (cartData.length > 0) {
+          // All items were removed
+          localStorage.removeItem('cart');
+        }
+      }
+    } catch (error) {
+      console.error('Failed to restore cart from localStorage:', error);
+      localStorage.removeItem('cart'); // Clear corrupted data
+    }
+  }, [products]); // Only run when products are loaded
 
   // Fetch initial data
   useEffect(() => {
@@ -267,18 +362,27 @@ export default function CustomerPage() {
       
       setIsSubmitting(true);
       try {
+        // Validate product_id
+        const productId = parseInt(product.id);
+        if (isNaN(productId)) {
+          toast.error('Sản phẩm không hợp lệ. Vui lòng thử lại.');
+          setIsSubmitting(false);
+          return;
+        }
+        
         const orderData = {
           customer_name: info.name,
           phone: info.phone,
           delivery_address: info.deliveryAddress,
           note: '',
           items: [{
-            product_id: product.id,
-            quantity: quantity,
-            options: options,
+            product_id: productId,
+            quantity: parseInt(quantity) || 1,
+            options: options || {},
           }],
         };
 
+        console.log('Sending direct order data:', orderData); // Debug log
         const newOrder = await createOrder(orderData);
         
         // Update orders state immediately
@@ -372,18 +476,52 @@ export default function CustomerPage() {
 
     setIsSubmitting(true);
     try {
+      // Validate cart items before sending
+      const validItems = cart
+        .map(item => {
+          // Ensure product exists and has valid id
+          if (!item.product || !item.product.id) {
+            console.error('Invalid cart item - missing product:', item);
+            return null;
+          }
+          
+          const productId = parseInt(item.product.id);
+          if (isNaN(productId)) {
+            console.error('Invalid product_id:', item.product.id);
+            return null;
+          }
+          
+          return {
+            product_id: productId,
+            quantity: parseInt(item.quantity) || 1,
+            options: item.options || {},
+          };
+        })
+        .filter(Boolean); // Remove null items
+      
+      if (validItems.length === 0) {
+        toast.error('Giỏ hàng không hợp lệ. Vui lòng thử lại.');
+        return;
+      }
+      
+      if (validItems.length !== cart.length) {
+        toast.error('Một số sản phẩm trong giỏ hàng không hợp lệ. Đã tự động loại bỏ.');
+        // Update cart to remove invalid items
+        setCart(prev => prev.filter(item => 
+          item.product && item.product.id && !isNaN(parseInt(item.product.id))
+        ));
+        return;
+      }
+
       const orderData = {
         customer_name: finalName,
         phone: finalPhone,
         delivery_address: finalAddress,
         note: orderNote,
-        items: cart.map(item => ({
-          product_id: item.product.id,
-          quantity: item.quantity,
-          options: item.options,
-        })),
+        items: validItems,
       };
 
+      console.log('Sending order data:', orderData); // Debug log
       const newOrder = await createOrder(orderData);
       
       // Ensure order has order_items with product data
