@@ -203,6 +203,7 @@ export default async function handler(req, res) {
         // Validate each item
         for (const item of items) {
           if (!item.product_id || isNaN(parseInt(item.product_id))) {
+            console.error('Invalid product_id:', item);
             return res.status(400).json({ error: 'Mỗi sản phẩm phải có product_id hợp lệ' });
           }
           if (!item.quantity || isNaN(parseInt(item.quantity)) || parseInt(item.quantity) < 1) {
@@ -212,18 +213,52 @@ export default async function handler(req, res) {
             return res.status(400).json({ error: 'Số lượng mỗi sản phẩm không được vượt quá 100' });
           }
         }
+        
+        // Log items để debug
+        console.log('Validated items:', items.map(item => ({
+          product_id: item.product_id,
+          product_id_parsed: parseInt(item.product_id),
+          quantity: item.quantity
+        })));
 
         // Check if all products are available
         const supabase = getSupabaseClient();
         const productIds = items.map(item => parseInt(item.product_id));
+        const uniqueProductIds = [...new Set(productIds)]; // Remove duplicates for query
+        
+        // Log để debug
+        console.log('Checking products:', {
+          requestedIds: productIds,
+          uniqueIds: uniqueProductIds,
+          itemsCount: items.length,
+          uniqueCount: uniqueProductIds.length
+        });
+        
         const { data: products, error: productsError } = await supabase
           .from('products')
           .select('id, name, is_available')
-          .in('id', productIds);
+          .in('id', uniqueProductIds);
 
-        if (productsError) throw productsError;
-        if (products.length !== productIds.length) {
-          return res.status(400).json({ error: 'Một hoặc nhiều sản phẩm không tồn tại' });
+        if (productsError) {
+          console.error('Products query error:', productsError);
+          throw productsError;
+        }
+        
+        console.log('Found products:', {
+          found: products.map(p => ({ id: p.id, name: p.name, is_available: p.is_available })),
+          foundCount: products.length,
+          requestedUniqueCount: uniqueProductIds.length
+        });
+        
+        // Check if all unique product IDs exist
+        if (products.length !== uniqueProductIds.length) {
+          const foundIds = products.map(p => parseInt(p.id));
+          const missingIds = uniqueProductIds.filter(id => !foundIds.includes(id));
+          console.error('Missing products:', missingIds);
+          return res.status(400).json({ 
+            error: 'Một hoặc nhiều sản phẩm không tồn tại',
+            missingIds: missingIds
+          });
         }
 
         const unavailableProducts = products.filter(p => !p.is_available);
@@ -254,13 +289,18 @@ export default async function handler(req, res) {
         const { data: productsRecheck, error: recheckError } = await supabase
           .from('products')
           .select('id, name, is_available')
-          .in('id', productIds);
+          .in('id', uniqueProductIds);
         
         if (recheckError) throw recheckError;
         
-        // Verify all products still exist
-        if (productsRecheck.length !== productIds.length) {
-          return res.status(400).json({ error: 'Một hoặc nhiều sản phẩm không tồn tại' });
+        // Verify all unique products still exist
+        if (productsRecheck.length !== uniqueProductIds.length) {
+          const foundIds = productsRecheck.map(p => parseInt(p.id));
+          const missingIds = uniqueProductIds.filter(id => !foundIds.includes(id));
+          return res.status(400).json({ 
+            error: 'Một hoặc nhiều sản phẩm không tồn tại',
+            missingIds: missingIds
+          });
         }
         
         // Verify all products are still available

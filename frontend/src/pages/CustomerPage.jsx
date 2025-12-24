@@ -521,7 +521,18 @@ export default function CustomerPage() {
         items: validItems,
       };
 
-      console.log('Sending order data:', orderData); // Debug log
+      // Debug log với chi tiết product_id
+      console.log('Sending order data:', {
+        customer_name: orderData.customer_name,
+        items: orderData.items.map(item => ({
+          product_id: item.product_id,
+          product_id_type: typeof item.product_id,
+          product_id_parsed: parseInt(item.product_id),
+          quantity: item.quantity,
+          options: item.options
+        })),
+        itemsCount: orderData.items.length
+      });
       const newOrder = await createOrder(orderData);
       
       // Ensure order has order_items with product data
