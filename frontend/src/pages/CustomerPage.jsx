@@ -51,6 +51,12 @@ export default function CustomerPage() {
 
   // Save cart to localStorage whenever it changes
   useEffect(() => {
+    // Skip saving if cart is being restored (to avoid clearing it)
+    if (cartRestoredRef.current === false && cart.length === 0) {
+      // Don't clear localStorage during initial load
+      return;
+    }
+    
     if (cart.length > 0) {
       // Only save product_id, options, quantity - not the full product object
       const cartData = cart
@@ -71,13 +77,18 @@ export default function CustomerPage() {
         .filter(Boolean); // Remove null items
       
       if (cartData.length > 0) {
+        console.log('Saving cart to localStorage:', cartData);
         localStorage.setItem('cart', JSON.stringify(cartData));
       } else {
+        console.log('Cart is empty, removing from localStorage');
         localStorage.removeItem('cart');
       }
     } else {
-      // Clear cart from localStorage if empty
-      localStorage.removeItem('cart');
+      // Only clear if cart was already restored (to avoid clearing during restore)
+      if (cartRestoredRef.current) {
+        console.log('Cart is empty, clearing localStorage');
+        localStorage.removeItem('cart');
+      }
     }
   }, [cart]);
 
@@ -85,63 +96,75 @@ export default function CustomerPage() {
   useEffect(() => {
     if (products.length === 0) return; // Wait for products to load
     if (cartRestoredRef.current) return; // Already restored
+    if (cart.length > 0) return; // Don't restore if cart already has items
     
     cartRestoredRef.current = true; // Mark as restored
     
     try {
       const savedCart = localStorage.getItem('cart');
-      if (savedCart) {
-        const cartData = JSON.parse(savedCart);
-        
-        // Map cart data to full cart items with product objects
-        const restoredCart = cartData
-          .map(item => {
-            // Ensure product_id is valid
-            const productId = parseInt(item.product_id);
-            if (isNaN(productId)) {
-              console.warn('Invalid product_id in saved cart:', item.product_id);
-              return null;
-            }
-            
-            // Find product by id (compare as numbers)
-            const product = products.find(p => parseInt(p.id) === productId);
-            if (!product) {
-              console.warn('Product not found:', productId);
-              return null; // Product no longer exists
-            }
-            
-            // Check if product is still available
-            if (!product.is_available) {
-              console.warn('Product unavailable:', product.name);
-              return null; // Product is unavailable
-            }
-            
-            return {
-              product,
-              options: item.options || {},
-              quantity: parseInt(item.quantity) || 1,
-              id: item.id || Date.now() + Math.random()
-            };
-          })
-          .filter(Boolean); // Remove null items
-        
-        if (restoredCart.length > 0) {
-          setCart(restoredCart);
-          // Show notification if some items were removed
-          const removedCount = cartData.length - restoredCart.length;
-          if (removedCount > 0) {
-            toast(`Đã xóa ${removedCount} sản phẩm không còn sẵn từ giỏ hàng`, { icon: '⚠️' });
+      if (!savedCart) {
+        console.log('No saved cart found in localStorage');
+        return;
+      }
+      
+      console.log('Restoring cart from localStorage...');
+      const cartData = JSON.parse(savedCart);
+      console.log('Saved cart data:', cartData);
+      
+      // Map cart data to full cart items with product objects
+      const restoredCart = cartData
+        .map(item => {
+          // Ensure product_id is valid
+          const productId = parseInt(item.product_id);
+          if (isNaN(productId)) {
+            console.warn('Invalid product_id in saved cart:', item.product_id);
+            return null;
           }
-        } else if (cartData.length > 0) {
-          // All items were removed
-          localStorage.removeItem('cart');
+          
+          // Find product by id (compare as numbers)
+          const product = products.find(p => parseInt(p.id) === productId);
+          if (!product) {
+            console.warn('Product not found:', productId, 'Available products:', products.map(p => p.id));
+            return null; // Product no longer exists
+          }
+          
+          // Check if product is still available
+          if (!product.is_available) {
+            console.warn('Product unavailable:', product.name);
+            return null; // Product is unavailable
+          }
+          
+          return {
+            product,
+            options: item.options || {},
+            quantity: parseInt(item.quantity) || 1,
+            id: item.id || Date.now() + Math.random()
+          };
+        })
+        .filter(Boolean); // Remove null items
+      
+      console.log('Restored cart:', restoredCart);
+      
+      if (restoredCart.length > 0) {
+        setCart(restoredCart);
+        console.log('Cart restored successfully with', restoredCart.length, 'items');
+        // Show notification if some items were removed
+        const removedCount = cartData.length - restoredCart.length;
+        if (removedCount > 0) {
+          toast(`Đã xóa ${removedCount} sản phẩm không còn sẵn từ giỏ hàng`, { icon: '⚠️' });
         }
+      } else if (cartData.length > 0) {
+        // All items were removed
+        console.warn('All cart items were removed (products not found or unavailable)');
+        localStorage.removeItem('cart');
+      } else {
+        console.log('Cart was empty in localStorage');
       }
     } catch (error) {
       console.error('Failed to restore cart from localStorage:', error);
       localStorage.removeItem('cart'); // Clear corrupted data
     }
-  }, [products]); // Only run when products are loaded
+  }, [products, cart.length]); // Run when products are loaded and cart is empty
 
   // Fetch initial data
   useEffect(() => {
